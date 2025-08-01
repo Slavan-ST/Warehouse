@@ -160,5 +160,25 @@ namespace WarehouseAPI.Services
 
             return Result.Success();
         }
+
+        public async Task<List<ShipmentDocument>> GetShipmentsWithResourcesAsync()
+        {
+            return await _context.ShipmentDocuments
+                .Include(sd => sd.Client)
+                .Include(sd => sd.ShipmentResources)
+                    .ThenInclude(sr => sr.Resource)
+                .Include(sd => sd.ShipmentResources)
+                    .ThenInclude(sr => sr.UnitOfMeasure)
+                .OrderByDescending(sd => sd.Date)
+                .ToListAsync();
+        }
+
+        public async Task<List<string>> GetDocumentNumbersAsync()
+        {
+            return await _context.ShipmentDocuments
+                .Select(sd => sd.Number)
+                .Distinct()
+                .ToListAsync();
+        }
     }
 }

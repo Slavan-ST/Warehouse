@@ -100,5 +100,26 @@ namespace WarehouseAPI.Services
 
             await _context.SaveChangesAsync();
         }
+
+        public async Task<List<ReceiptDocument>> GetReceiptsWithResourcesAsync()
+        {
+            return await _context.ReceiptDocuments
+                .Include(rd => rd.ReceiptResources)
+                    .ThenInclude(rr => rr.Resource)
+                .Include(rd => rd.ReceiptResources)
+                    .ThenInclude(rr => rr.UnitOfMeasure)
+                .OrderByDescending(rd => rd.Date)
+                .ToListAsync();
+        }
+
+        public async Task<List<string>> GetDocumentNumbersAsync()
+        {
+            return await _context.ReceiptDocuments
+                .Select(rd => rd.Number)
+                .Distinct()
+                .ToListAsync();
+        }
+
+        
     }
 }

@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
+using System.Reflection;
 using WarehouseAPI.Data;
 using WarehouseAPI.Services;
 
@@ -9,6 +11,23 @@ namespace WarehouseAPI
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            builder.Services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "Warehouse API",
+                    Version = "v1",
+                    Description = "API для управления складом, поступлениями и отгрузками",
+                    Contact = new OpenApiContact
+                    {
+                        Name = "Ваша команда",
+                        Email = "support@yourcompany.com"
+                    }
+                });
+
+                c.UseInlineDefinitionsForEnums();
+            });
 
             // Add services to the container.
 
@@ -27,6 +46,17 @@ namespace WarehouseAPI
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Warehouse API v1");
+                    c.RoutePrefix = "api-docs"; // Доступ по /api-docs
+                    c.DisplayOperationId();
+                    c.DisplayRequestDuration();
+                });
+            }
 
             app.UseAuthorization();
 
