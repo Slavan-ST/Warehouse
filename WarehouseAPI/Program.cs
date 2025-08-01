@@ -28,8 +28,16 @@ namespace WarehouseAPI
 
                 c.UseInlineDefinitionsForEnums();
             });
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
 
-            // Add services to the container.
 
             builder.Services.AddControllers();
 
@@ -45,7 +53,7 @@ namespace WarehouseAPI
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
+            app.UseCors("AllowAll");
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
