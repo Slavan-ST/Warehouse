@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.34818.151
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WarehouseAPI", "WarehouseAPI\WarehouseAPI.csproj", "{F5EFBA37-58A8-40BC-80C4-D7EB8B90C591}"
+EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "warehouseclient", "WarehouseClient\warehouseclient.esproj", "{CABCD4FC-8A4B-4902-B5EE-628F2F8F1ED1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F5EFBA37-58A8-40BC-80C4-D7EB8B90C591}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5EFBA37-58A8-40BC-80C4-D7EB8B90C591}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5EFBA37-58A8-40BC-80C4-D7EB8B90C591}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5EFBA37-58A8-40BC-80C4-D7EB8B90C591}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CABCD4FC-8A4B-4902-B5EE-628F2F8F1ED1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CABCD4FC-8A4B-4902-B5EE-628F2F8F1ED1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CABCD4FC-8A4B-4902-B5EE-628F2F8F1ED1}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{CABCD4FC-8A4B-4902-B5EE-628F2F8F1ED1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CABCD4FC-8A4B-4902-B5EE-628F2F8F1ED1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CABCD4FC-8A4B-4902-B5EE-628F2F8F1ED1}.Release|Any CPU.Deploy.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A189571A-C9D6-4788-AF35-9E5887F21C4D}
+	EndGlobalSection
+EndGlobal
