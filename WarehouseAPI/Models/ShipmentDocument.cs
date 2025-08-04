@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 using WarehouseAPI.Models.Enums;
+using System.Text.Json.Serialization;
 
 namespace WarehouseAPI.Models
 {
@@ -23,6 +24,7 @@ namespace WarehouseAPI.Models
 
         [Required]
         public ShipmentDocumentStatus Status { get; set; } = ShipmentDocumentStatus.Draft;
+
 
         public ICollection<ShipmentResource> ShipmentResources { get; set; }
     }

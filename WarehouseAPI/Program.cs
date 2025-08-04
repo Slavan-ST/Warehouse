@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using System.Text.Json.Serialization;
+using TechTalk.SpecFlow.Assist;
 using WarehouseAPI.Data;
 using WarehouseAPI.Services;
 
@@ -36,6 +38,11 @@ namespace WarehouseAPI
                           .AllowAnyMethod()
                           .AllowAnyHeader();
                 });
+            });
+            builder.Services.AddControllers().AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
+                options.JsonSerializerOptions.WriteIndented = true;
             });
 
 

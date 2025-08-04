@@ -2,15 +2,18 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:5130/api/Warehouse'
+    baseURL: 'http://localhost:5130/api/'
 });
 
-// Интерфейсы должны быть объявлены перед их использованием
+export interface ApiResponse<T> {
+    $id: string;
+    $values: T[];
+}
+
 export interface BalanceItem {
+    id: number;
     resourceId: number;
-    resourceName: string;
-    unitId: number;
-    unitName: string;
+    unitOfMeasureId: number;
     quantity: number;
 }
 
@@ -31,6 +34,130 @@ export interface Unit {
     receiptResources?: any;
     shipmentResources?: any;
 }
+export interface ReceiptDocument {
+    $id: string;
+    id: number;
+    number: string;
+    date: string;
+    receiptResources: ApiResponse<ReceiptResource>;
+}
+
+export interface ReceiptResource {
+    $id: string;
+    id: number;
+    receiptDocumentId: number;
+    receiptDocument: { $ref: string };
+    resourceId: number;
+    unitOfMeasureId: number;
+    quantity: number;
+    resourceName?: string; // Будем добавлять на клиенте
+    unitName?: string;     // Будем добавлять на клиенте
+}
+
+export interface ReceiptItem {
+    documentId: number;
+    documentNumber: string;
+    date: string;
+    resourceId: number;
+    unitId: number;
+    quantity: number;
+    resourceName: string;
+    unitName: string;
+}
+export interface ShipmentDocument {
+    $id: string;
+    id: number;
+    number: string;
+    clientId: number;
+    client: Client | { $ref: string };
+    date: string; // ISO date
+    status: number; // 0 = черновик, 1 = подтверждён, 2 = подписан
+    shipmentResources?: ApiResponse<ShipmentResource>;
+}
+
+export interface Client {
+    $id: string;
+    id: number;
+    name: string;
+    address: string;
+    status: number;
+    shipmentDocuments: ApiResponse<ShipmentDocument>;
+}
+
+export interface ShipmentResource {
+    $id: string;
+    id: number;
+    shipmentDocumentId: number;
+    resourceId: number;
+    unitOfMeasureId: number;
+    quantity: number;
+    resource?: Resource;
+    unitOfMeasure?: Unit;
+}
+
+export interface ShipmentItem {
+    documentId: number;
+    documentNumber: string;
+    date: string;
+    clientName: string;
+    status: 'draft' | 'confirmed' | 'signed';
+    resourceId: number;
+    unitId: number;
+    resourceName: string;
+    unitName: string;
+    quantity: number;
+}
+
+export const getReceipts = async (
+    fromDate?: Date | null,
+    toDate?: Date | null,
+    documentNumbers?: string[],
+    resourceIds?: number[],
+    unitIds?: number[]
+): Promise<ReceiptItem[]> => {
+    const params = new URLSearchParams();
+
+    if (fromDate) params.append('fromDate', fromDate.toISOString());
+    if (toDate) params.append('toDate', toDate.toISOString());
+    if (documentNumbers) documentNumbers.forEach(num => params.append('documentNumbers', num));
+    if (resourceIds) resourceIds.forEach(id => params.append('resourceIds', id.toString()));
+    if (unitIds) unitIds.forEach(id => params.append('unitIds', id.toString()));
+
+    try {
+        // Получаем документы поступлений
+        const documentsResponse = await api.get<ApiResponse<ReceiptDocument>>('/Receipts', { params });
+        const documents = documentsResponse.data.$values;
+
+        // Получаем справочники для доп. информации
+        const [resources, units] = await Promise.all([
+            getResources(),
+            getUnits()
+        ]);
+
+        // Преобразуем структуру данных в плоскую таблицу
+        const receiptItems: ReceiptItem[] = [];
+
+        documents.forEach(document => {
+            document.receiptResources.$values.forEach(resource => {
+                receiptItems.push({
+                    documentId: document.id,
+                    documentNumber: document.number,
+                    date: document.date,
+                    resourceId: resource.resourceId,
+                    unitId: resource.unitOfMeasureId,
+                    quantity: resource.quantity,
+                    resourceName: resources.find(r => r.id === resource.resourceId)?.name || 'Неизвестно',
+                    unitName: units.find(u => u.id === resource.unitOfMeasureId)?.name || 'Неизвестно'
+                });
+            });
+        });
+
+        return receiptItems;
+    } catch (error) {
+        console.error('Error fetching receipts:', error);
+        throw new Error('Не удалось загрузить данные поступлений');
+    }
+};
 
 export const getBalances = async (resourceIds?: number[], unitIds?: number[]): Promise<BalanceItem[]> => {
     const params = new URLSearchParams();
@@ -43,16 +170,99 @@ export const getBalances = async (resourceIds?: number[], unitIds?: number[]): P
         unitIds.forEach(id => params.append('unitIds', id.toString()));
     }
 
-    const response = await api.get('/balances', { params });
-    return response.data;
+    const response = await api.get<ApiResponse<BalanceItem>>('/Warehouse/balances', { params });
+    return response.data.$values; // Возвращаем только массив значений
 };
 
 export const getResources = async (): Promise<Resource[]> => {
-    const response = await api.get('/resources');
-    return response.data;
+    const response = await api.get<ApiResponse<Resource>>('/Warehouse/resources');
+    return response.data.$values;
 };
 
 export const getUnits = async (): Promise<Unit[]> => {
-    const response = await api.get('/units');
-    return response.data;
+    const response = await api.get<ApiResponse<Unit>>('/Receipts/units');
+    return response.data.$values;
+
+};
+
+export const getShipments = async (
+    fromDate?: Date | null,
+    toDate?: Date | null,
+    documentNumber?: string,
+    clientNameFilter?: string,
+    resourceIds?: number[],
+    unitIds?: number[]
+): Promise<ShipmentItem[]> => {
+    const params = new URLSearchParams();
+
+    if (fromDate) params.append('fromDate', fromDate.toISOString());
+    if (toDate) params.append('toDate', toDate.toISOString());
+    if (documentNumber) params.append('documentNumber', documentNumber);
+    if (clientNameFilter) params.append('clientName', clientNameFilter);
+    if (resourceIds) resourceIds.forEach(id => params.append('resourceIds', id.toString()));
+    if (unitIds) unitIds.forEach(id => params.append('unitIds', id.toString()));
+
+    try {
+        const response = await api.get<ApiResponse<ShipmentDocument>>('/Shipments', { params });
+        const documents = response.data.$values;
+
+        // Получаем справочники
+        const [resources, units, clients] = await Promise.all([
+            getResources(),
+            getUnits(),
+            getClients(), // Добавим этот метод ниже
+        ]);
+
+        const shipmentItems: ShipmentItem[] = [];
+
+        documents.forEach(doc => {
+            // Раскрываем $ref, если client — это ссылка
+            let client: Client | undefined;
+            if ('client' in doc && doc.client && '$ref' in doc.client) {
+                const clientId = doc.clientId;
+                client = clients.find(c => c.id === clientId);
+            } else {
+                client = doc.client as Client;
+            }
+
+            const clientName = client?.name || 'Неизвестный клиент';
+
+            // Статус
+            const statusMap = {
+                0: 'draft',
+                1: 'confirmed',
+                2: 'signed'
+            };
+            const status: ShipmentItem['status'] = statusMap[doc.status as 0 | 1 | 2] || 'draft';
+
+            // Ресурсы в документе
+            const resourcesInDoc = doc.shipmentResources?.$values || [];
+
+            resourcesInDoc.forEach(resource => {
+                shipmentItems.push({
+                    documentId: doc.id,
+                    documentNumber: doc.number,
+                    date: doc.date,
+                    clientName,
+                    status,
+                    resourceId: resource.resourceId,
+                    unitId: resource.unitOfMeasureId,
+                    quantity: resource.quantity,
+                    resourceName: resources.find(r => r.id === resource.resourceId)?.name || 'Неизвестно',
+                    unitName: units.find(u => u.id === resource.unitOfMeasureId)?.name || 'Неизвестно'
+                });
+            });
+        });
+
+        return shipmentItems;
+    } catch (error) {
+        console.error('Error fetching shipments:', error);
+        throw new Error('Не удалось загрузить данные отгрузок');
+    }
+};
+
+// Добавим получение клиентов
+export const getClients = async (): Promise<Client[]> => {
+    const response = await api.get<ApiResponse<Client>>('/Shipments/Clients');
+    return response.data.$values;
 };

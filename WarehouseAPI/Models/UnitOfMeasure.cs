@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using WarehouseAPI.Models.Enums;
 
 namespace WarehouseAPI.Models
@@ -15,8 +16,14 @@ namespace WarehouseAPI.Models
         [Required]
         public EntityStatus Status { get; set; } = EntityStatus.Active;
 
+
+        [JsonIgnore]
         public ICollection<Balance> Balances { get; set; }
+
+        [JsonIgnore]
         public ICollection<ReceiptResource> ReceiptResources { get; set; }
+
+        [JsonIgnore]
         public ICollection<ShipmentResource> ShipmentResources { get; set; }
     }
 }
