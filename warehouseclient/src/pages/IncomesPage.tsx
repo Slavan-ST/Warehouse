@@ -17,10 +17,10 @@ import {
     Grid
 } from '@mui/material';
 import { ru } from 'date-fns/locale';
-import { format, isValid, isBefore, isAfter } from 'date-fns';
-
+import { format, isValid, isAfter, isBefore } from 'date-fns';
 import type { ReceiptItem } from '../api/warehouseApi';
 import { getReceipts, getResources, getUnits } from '../api/warehouseApi';
+import { Link } from 'react-router-dom';
 
 const IncomesPage = () => {
     const [receipts, setReceipts] = useState<ReceiptItem[]>([]);
@@ -52,12 +52,10 @@ const IncomesPage = () => {
             try {
                 setLoading(true);
                 setError(null);
-
                 const [resourcesResponse, unitsResponse] = await Promise.all([
                     getResources(),
                     getUnits()
                 ]);
-
                 setResources(resourcesResponse);
                 setUnits(unitsResponse);
                 await loadReceipts();
@@ -68,14 +66,12 @@ const IncomesPage = () => {
                 setLoading(false);
             }
         };
-
         loadData();
     }, []);
 
     // Функция загрузки поступлений с учетом фильтров
     const loadReceipts = async () => {
         if (dateError) return;
-
         try {
             setLoading(true);
             const documentNumbers = documentNumberFilter ? [documentNumberFilter] : undefined;
@@ -103,29 +99,49 @@ const IncomesPage = () => {
         console.log('Добавление нового поступления');
     };
 
-    const handleStartDateChange = (newValue: Date | null) => {
-        if (!newValue || !isValid(newValue)) return;
-        setStartDate(newValue);
+    const handleStartDateChange = (newValue: string | null) => {
+        if (!newValue) return;
+        const date = new Date(newValue);
+        if (isValid(date)) {
+            setStartDate(date);
+        }
     };
 
-    const handleEndDateChange = (newValue: Date | null) => {
-        if (!newValue || !isValid(newValue)) return;
-        setEndDate(newValue);
+    const handleEndDateChange = (newValue: string | null) => {
+        if (!newValue) return;
+        const date = new Date(newValue);
+        if (isValid(date)) {
+            setEndDate(date);
+        }
     };
 
     return (
         <Box sx={{ p: 3 }}>
             <Typography variant="h4" gutterBottom>Поступления</Typography>
-
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
             <Box sx={{ mb: 3 }}>
                 <Grid container spacing={2}>
                     <Grid item xs={12} sm={6} md={3}>
-                        
+                        <TextField
+                            label="Дата начала"
+                            type="date"
+                            value={startDate ? startDate.toISOString().split('T')[0] : ''}
+                            onChange={(e) => handleStartDateChange(e.target.value)}
+                            fullWidth
+                            InputLabelProps={{ shrink: true }}
+                            disabled={loading}
+                        />
                     </Grid>
                     <Grid item xs={12} sm={6} md={3}>
-                        
+                        <TextField
+                            label="Дата окончания"
+                            type="date"
+                            value={endDate ? endDate.toISOString().split('T')[0] : ''}
+                            onChange={(e) => handleEndDateChange(e.target.value)}
+                            fullWidth
+                            InputLabelProps={{ shrink: true }}
+                            disabled={loading}
+                        />
                     </Grid>
                     <Grid item xs={12} sm={6} md={3}>
                         <TextField
@@ -135,46 +151,44 @@ const IncomesPage = () => {
                             fullWidth
                         />
                     </Grid>
-                </Grid>
-
-                {/* Остальной код остается без изменений */}
-                <Grid container spacing={2} sx={{ mt: 1 }}>
-                    <Grid item xs={12} sm={6} md={3}>
-                        <TextField
-                            select
-                            label="Ресурс"
-                            value={resourceFilter.map(String)} // преобразуем number[] → string[]
-                            onChange={(e) => {
-                                const value = e.target.value;
-                                const ids = Array.isArray(value)
-                                    ? value.map(id => parseInt(id, 10))
-                                    : [parseInt(value, 10)];
-                                setResourceFilter(ids);
-                            }}
-                            SelectProps={{
-                                multiple: true,
-                                renderValue: (selected) => {
-                                    return selected
-                                        .map(id => {
-                                            const resource = resources.find(r => r.id === Number(id));
-                                            return resource?.name || '';
-                                        })
-                                        .filter(name => name)
-                                        .join(', ');
-                                }
-                            }}
-                            fullWidth
-                            disabled={loading}
-                        >
-                            {resources.map((resource) => (
-                                <MenuItem
-                                    key={resource.id}
-                                    value={resource.id} // будет приведено к строке
-                                >
-                                    {resource.name}
-                                </MenuItem>
-                            ))}
-                        </TextField>
+                    <Grid container spacing={2} sx={{ mt: 1 }}>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <TextField
+                                select
+                                label="Ресурс"
+                                value={resourceFilter.map(String)} // преобразуем number[] → string[]
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    const ids = Array.isArray(value)
+                                        ? value.map(id => parseInt(id, 10))
+                                        : [parseInt(value, 10)];
+                                    setResourceFilter(ids);
+                                }}
+                                SelectProps={{
+                                    multiple: true,
+                                    renderValue: (selected) => {
+                                        return selected
+                                            .map(id => {
+                                                const resource = resources.find(r => r.id === Number(id));
+                                                return resource?.name || '';
+                                            })
+                                            .filter(name => name)
+                                            .join(', ');
+                                    }
+                                }}
+                                fullWidth
+                                disabled={loading}
+                            >
+                                {resources.map((resource) => (
+                                    <MenuItem
+                                        key={resource.id}
+                                        value={resource.id} // будет приведено к строке
+                                    >
+                                        {resource.name}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+                        </Grid>
                     </Grid>
                     <Grid item xs={12} sm={6} md={3}>
                         <TextField
@@ -184,7 +198,7 @@ const IncomesPage = () => {
                             onChange={(e) => setUnitFilter(
                                 typeof e.target.value === 'string'
                                     ? [parseInt(e.target.value)]
-                                    : e.target.value.map(id => parseInt(id as string))
+                                    : e.target.value.map((id) => parseInt(id as string))
                             )}
                             SelectProps={{ multiple: true }}
                             fullWidth
@@ -198,7 +212,6 @@ const IncomesPage = () => {
                         </TextField>
                     </Grid>
                 </Grid>
-
                 <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
                     <Button
                         variant="contained"
@@ -207,16 +220,13 @@ const IncomesPage = () => {
                     >
                         Применить
                     </Button>
-                    <Button
-                        variant="outlined"
-                        onClick={handleAddReceipt}
-                        disabled={loading}
-                    >
-                        Добавить
-                    </Button>
+                    <Link to="/add-receipt" style={{ textDecoration: 'none' }}>
+                        <Button variant="outlined" disabled={loading}>
+                            Добавить
+                        </Button>
+                    </Link>
                 </Box>
             </Box>
-
             {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
                     <CircularProgress />

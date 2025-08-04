@@ -18,8 +18,14 @@ import {
 import { getBalances, getResources, getUnits } from '../api/warehouseApi';
 import type { BalanceItem, Resource, Unit } from '../api/warehouseApi';
 
+// Интерфейс для строки баланса с именами
+interface BalanceViewItem extends BalanceItem {
+    resourceName: string;
+    unitName: string;
+}
+
 const BalancePage = () => {
-    const [balances, setBalances] = useState<BalanceItem[]>([]);
+    const [balances, setBalances] = useState<BalanceViewItem[]>([]);
     const [resources, setResources] = useState<Resource[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
     const [loading, setLoading] = useState(true);
@@ -27,62 +33,69 @@ const BalancePage = () => {
     const [resourceFilter, setResourceFilter] = useState<number[]>([]);
     const [unitFilter, setUnitFilter] = useState<number[]>([]);
 
-    // Загрузка начальных данных
+    // Загрузка справочников (ресурсы и единицы)
     useEffect(() => {
-        const loadData = async () => {
+        const loadReferences = async () => {
+            try {
+                const [res, unt] = await Promise.all([
+                    getResources(),
+                    getUnits()
+                ]);
+                setResources(res);
+                setUnits(unt);
+            } catch (err) {
+                setError('Не удалось загрузить справочники');
+            }
+        };
+
+        loadReferences();
+    }, []);
+
+    // Загрузка и обогащение балансов
+    useEffect(() => {
+        const loadBalances = async () => {
+            // Ждём, пока загрузятся справочники
+            if (resources.length === 0 || units.length === 0) return;
+
             try {
                 setLoading(true);
                 setError(null);
 
-                const [resourcesResponse, unitsResponse, balancesResponse] = await Promise.all([
-                    getResources(),
-                    getUnits(),
-                    getBalances()
-                ]);
-
-                setResources(resourcesResponse);
-                setUnits(unitsResponse);
-                setBalances(balancesResponse);
-            } catch (err) {
-                console.error('Ошибка загрузки данных:', err);
-                setError('Не удалось загрузить данные. Пожалуйста, попробуйте позже.');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadData();
-    }, []);
-
-    // Обновление данных при изменении фильтров
-    useEffect(() => {
-        const updateFilteredData = async () => {
-            try {
-                setLoading(true);
-                const filteredBalances = await getBalances(
+                const rawBalances = await getBalances(
                     resourceFilter.length > 0 ? resourceFilter : undefined,
                     unitFilter.length > 0 ? unitFilter : undefined
                 );
-                setBalances(filteredBalances);
+
+                // Добавляем имена ресурсов и единиц измерения
+                const enrichedBalances: BalanceViewItem[] = rawBalances.map(item => ({
+                    ...item,
+                    resourceName: resources.find(r => r.id === item.resourceId)?.name || 'Неизвестно',
+                    unitName: units.find(u => u.id === item.unitOfMeasureId)?.name || 'Неизвестно'
+                }));
+
+                setBalances(enrichedBalances);
             } catch (err) {
-                console.error('Ошибка фильтрации:', err);
-                setError('Не удалось применить фильтры');
+                setError('Не удалось загрузить баланс');
             } finally {
                 setLoading(false);
             }
         };
 
-        updateFilteredData();
-    }, [resourceFilter, unitFilter]);
+        loadBalances();
+    }, [resourceFilter, unitFilter, resources, units]);
 
     const handleResourceFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
-        setResourceFilter(typeof value === 'string' ? [parseInt(value)] : value.map(id => parseInt(id as string)));
+        setResourceFilter(
+            typeof value === 'string' ? [parseInt(value)] : value.map(Number)
+        );
     };
 
     const handleUnitFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
-        setUnitFilter(typeof value === 'string' ? [parseInt(value)] : value.map(id => parseInt(id as string)));
+        setUnitFilter(
+            typeof value === 'string' ? [parseInt(value)] : value.map(Number)
+        );
     };
 
     return (
@@ -131,7 +144,7 @@ const BalancePage = () => {
                 </Box>
             ) : (
                 <TableContainer component={Paper}>
-                    <Table>
+                    <Table size="small">
                         <TableHead>
                             <TableRow>
                                 <TableCell>Ресурс</TableCell>
@@ -140,13 +153,21 @@ const BalancePage = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {balances.map((item) => (
-                                <TableRow key={`${item.resourceId}-${item.unitId}`}>
-                                    <TableCell>{item.resourceName}</TableCell>
-                                    <TableCell>{item.unitName}</TableCell>
-                                    <TableCell align="right">{item.quantity}</TableCell>
+                            {balances.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={3} align="center">
+                                        Нет данных по балансу
+                                    </TableCell>
                                 </TableRow>
-                            ))}
+                            ) : (
+                                balances.map((item) => (
+                                    <TableRow key={`${item.resourceId}-${item.unitOfMeasureId}`}>
+                                        <TableCell>{item.resourceName}</TableCell>
+                                        <TableCell>{item.unitName}</TableCell>
+                                        <TableCell align="right">{item.quantity}</TableCell>
+                                    </TableRow>
+                                ))
+                            )}
                         </TableBody>
                     </Table>
                 </TableContainer>

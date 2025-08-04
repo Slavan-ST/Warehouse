@@ -6,6 +6,7 @@ import ShipmentsPage from "./pages/ShipmentsPage";
 import ClientsPage from "./pages/ClientsPage";
 import UnitsPage from "./pages/UnitsPage";
 import ResourcesPage from "./pages/ResourcesPage";
+import AddReceiptPage from "./pages/AddReceiptPage";
 
 function App() {
     return (
@@ -19,6 +20,7 @@ function App() {
                     <Route path="clients" element={<ClientsPage />} />
                     <Route path="units" element={<UnitsPage />} />
                     <Route path="resources" element={<ResourcesPage />} />
+                    <Route path="add-receipt" element={<AddReceiptPage />} />
                 </Route>
             </Routes>
         </BrowserRouter>
