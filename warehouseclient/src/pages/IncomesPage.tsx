@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import {
     Typography,
     Table,
@@ -14,13 +14,23 @@ import {
     CircularProgress,
     Alert,
     Button,
-    Grid
+    Grid,
 } from '@mui/material';
-import { ru } from 'date-fns/locale';
-import { format, isValid, isAfter, isBefore } from 'date-fns';
+import { format, isValid, isAfter } from 'date-fns';
 import type { ReceiptItem } from '../api/warehouseApi';
 import { getReceipts, getResources, getUnits } from '../api/warehouseApi';
 import { Link } from 'react-router-dom';
+
+// Определите типы, если они не импортированы
+interface Resource {
+    id: number;
+    name: string;
+}
+
+interface Unit {
+    id: number;
+    name: string;
+}
 
 const IncomesPage = () => {
     const [receipts, setReceipts] = useState<ReceiptItem[]>([]);
@@ -46,41 +56,23 @@ const IncomesPage = () => {
         }
     }, [startDate, endDate]);
 
-    // Загрузка начальных данных
-    useEffect(() => {
-        const loadData = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-                const [resourcesResponse, unitsResponse] = await Promise.all([
-                    getResources(),
-                    getUnits()
-                ]);
-                setResources(resourcesResponse);
-                setUnits(unitsResponse);
-                await loadReceipts();
-            } catch (err) {
-                console.error('Ошибка загрузки данных:', err);
-                setError('Не удалось загрузить данные. Пожалуйста, попробуйте позже.');
-            } finally {
-                setLoading(false);
-            }
-        };
-        loadData();
-    }, []);
-
-    // Функция загрузки поступлений с учетом фильтров
-    const loadReceipts = async () => {
+    // Загрузка поступлений
+    const loadReceipts = useCallback(async () => {
         if (dateError) return;
         try {
             setLoading(true);
+            setError(null);
+
             const documentNumbers = documentNumberFilter ? [documentNumberFilter] : undefined;
+            const resourceIds = resourceFilter.length > 0 ? resourceFilter : undefined;
+            const unitIds = unitFilter.length > 0 ? unitFilter : undefined;
+
             const receiptsResponse = await getReceipts(
                 startDate,
                 endDate,
                 documentNumbers,
-                resourceFilter.length > 0 ? resourceFilter : undefined,
-                unitFilter.length > 0 ? unitFilter : undefined
+                resourceIds,
+                unitIds
             );
             setReceipts(receiptsResponse);
         } catch (err) {
@@ -89,14 +81,44 @@ const IncomesPage = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [
+        startDate,
+        endDate,
+        documentNumberFilter,
+        resourceFilter,
+        unitFilter,
+        dateError,
+    ]);
+
+    // Загрузка начальных данных
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+
+                const [resourcesResponse, unitsResponse] = await Promise.all([
+                    getResources(),
+                    getUnits(),
+                ]);
+
+                setResources(resourcesResponse);
+                setUnits(unitsResponse);
+
+                await loadReceipts();
+            } catch (err) {
+                console.error('Ошибка загрузки данных:', err);
+                setError('Не удалось загрузить данные. Пожалуйста, попробуйте позже.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadData();
+    }, [loadReceipts]);
 
     const handleApplyFilters = () => {
         loadReceipts();
-    };
-
-    const handleAddReceipt = () => {
-        console.log('Добавление нового поступления');
     };
 
     const handleStartDateChange = (newValue: string | null) => {
@@ -117,10 +139,14 @@ const IncomesPage = () => {
 
     return (
         <Box sx={{ p: 3 }}>
-            <Typography variant="h4" gutterBottom>Поступления</Typography>
+            <Typography variant="h4" gutterBottom>
+                Поступления
+            </Typography>
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
             <Box sx={{ mb: 3 }}>
                 <Grid container spacing={2}>
+                    {/* Дата начала */}
                     <Grid item xs={12} sm={6} md={3}>
                         <TextField
                             label="Дата начала"
@@ -129,9 +155,12 @@ const IncomesPage = () => {
                             onChange={(e) => handleStartDateChange(e.target.value)}
                             fullWidth
                             InputLabelProps={{ shrink: true }}
+                            error={!!dateError}
                             disabled={loading}
                         />
                     </Grid>
+
+                    {/* Дата окончания */}
                     <Grid item xs={12} sm={6} md={3}>
                         <TextField
                             label="Дата окончания"
@@ -140,67 +169,82 @@ const IncomesPage = () => {
                             onChange={(e) => handleEndDateChange(e.target.value)}
                             fullWidth
                             InputLabelProps={{ shrink: true }}
+                            error={!!dateError}
+                            helperText={dateError}
                             disabled={loading}
                         />
                     </Grid>
+
+                    {/* Номер документа */}
                     <Grid item xs={12} sm={6} md={3}>
                         <TextField
                             label="Номер документа"
                             value={documentNumberFilter}
                             onChange={(e) => setDocumentNumberFilter(e.target.value)}
                             fullWidth
+                            disabled={loading}
                         />
                     </Grid>
-                    <Grid container spacing={2} sx={{ mt: 1 }}>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <TextField
-                                select
-                                label="Ресурс"
-                                value={resourceFilter.map(String)} // преобразуем number[] → string[]
-                                onChange={(e) => {
-                                    const value = e.target.value;
-                                    const ids = Array.isArray(value)
-                                        ? value.map(id => parseInt(id, 10))
-                                        : [parseInt(value, 10)];
-                                    setResourceFilter(ids);
-                                }}
-                                SelectProps={{
-                                    multiple: true,
-                                    renderValue: (selected) => {
-                                        return selected
-                                            .map(id => {
-                                                const resource = resources.find(r => r.id === Number(id));
-                                                return resource?.name || '';
-                                            })
-                                            .filter(name => name)
-                                            .join(', ');
-                                    }
-                                }}
-                                fullWidth
-                                disabled={loading}
-                            >
-                                {resources.map((resource) => (
-                                    <MenuItem
-                                        key={resource.id}
-                                        value={resource.id} // будет приведено к строке
-                                    >
-                                        {resource.name}
-                                    </MenuItem>
-                                ))}
-                            </TextField>
-                        </Grid>
+
+                    {/* Ресурс */}
+                    <Grid item xs={12} sm={6} md={3}>
+                        <TextField
+                            select
+                            label="Ресурс"
+                            value={resourceFilter.map(String)}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                const ids = Array.isArray(value)
+                                    ? value.map((id) => parseInt(id, 10))
+                                    : [parseInt(value, 10)];
+                                setResourceFilter(ids);
+                            }}
+                            SelectProps={{
+                                multiple: true,
+                                renderValue: (selected) =>
+                                    selected
+                                        .map((id) => {
+                                            const resource = resources.find((r) => r.id === Number(id));
+                                            return resource?.name || '';
+                                        })
+                                        .filter(Boolean)
+                                        .join(', '),
+                            }}
+                            fullWidth
+                            disabled={loading}
+                        >
+                            {resources.map((resource) => (
+                                <MenuItem key={resource.id} value={resource.id}>
+                                    {resource.name}
+                                </MenuItem>
+                            ))}
+                        </TextField>
                     </Grid>
+
+                    {/* Единица измерения */}
                     <Grid item xs={12} sm={6} md={3}>
                         <TextField
                             select
                             label="Единица измерения"
-                            value={unitFilter}
-                            onChange={(e) => setUnitFilter(
-                                typeof e.target.value === 'string'
-                                    ? [parseInt(e.target.value)]
-                                    : e.target.value.map((id) => parseInt(id as string))
-                            )}
-                            SelectProps={{ multiple: true }}
+                            value={unitFilter.map(String)} // Исправлено: преобразуем числа в строки
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                const ids = Array.isArray(value)
+                                    ? value.map((id) => parseInt(id, 10))
+                                    : [parseInt(value, 10)];
+                                setUnitFilter(ids);
+                            }}
+                            SelectProps={{
+                                multiple: true,
+                                renderValue: (selected) =>
+                                    selected
+                                        .map((id) => {
+                                            const unit = units.find((u) => u.id === Number(id));
+                                            return unit?.name || '';
+                                        })
+                                        .filter(Boolean)
+                                        .join(', '),
+                            }}
                             fullWidth
                             disabled={loading}
                         >
@@ -212,6 +256,7 @@ const IncomesPage = () => {
                         </TextField>
                     </Grid>
                 </Grid>
+
                 <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
                     <Button
                         variant="contained"
@@ -220,13 +265,17 @@ const IncomesPage = () => {
                     >
                         Применить
                     </Button>
-                    <Link to="/add-receipt" style={{ textDecoration: 'none' }}>
-                        <Button variant="outlined" disabled={loading}>
-                            Добавить
-                        </Button>
-                    </Link>
+                    <Button
+                        variant="outlined"
+                        component={Link}
+                        to="/add-receipt"
+                        disabled={loading}
+                    >
+                        Добавить
+                    </Button>
                 </Box>
             </Box>
+
             {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
                     <CircularProgress />
@@ -244,15 +293,23 @@ const IncomesPage = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {receipts.map((item, index) => (
-                                <TableRow key={index}>
-                                    <TableCell>{item.documentNumber}</TableCell>
-                                    <TableCell>{format(new Date(item.date), 'dd.MM.yyyy')}</TableCell>
-                                    <TableCell>{item.resourceName}</TableCell>
-                                    <TableCell>{item.unitName}</TableCell>
-                                    <TableCell align="right">{item.quantity}</TableCell>
+                            {receipts.length > 0 ? (
+                                    receipts.map((item) => (
+                                        <TableRow key={item.id}>
+                                            <TableCell>{item.documentNumber}</TableCell>
+                                            <TableCell>{format(new Date(item.date), 'dd.MM.yyyy')}</TableCell>
+                                            <TableCell>{item.resourceName}</TableCell>
+                                            <TableCell>{item.unitName}</TableCell>
+                                            <TableCell align="right">{item.quantity}</TableCell>
+                                        </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={5} align="center">
+                                        Нет данных
+                                    </TableCell>
                                 </TableRow>
-                            ))}
+                            )}
                         </TableBody>
                     </Table>
                 </TableContainer>
