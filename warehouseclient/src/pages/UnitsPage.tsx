@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { getUnits } from '../api/warehouseApi';
 import type { Unit } from '../api/warehouseApi';
+import { Link } from 'react-router-dom';
 
 const UnitsPage = () => {
     const [units, setUnits] = useState<Unit[]>([]);
@@ -51,7 +52,13 @@ const UnitsPage = () => {
 
             <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item>
-                    <Button variant="contained" color="success">
+                    <Button
+                        variant="outlined"
+                        color="success"
+                        disabled={loading}
+                        component={Link}
+                        to="/add-unit"
+                    >
                         Добавить
                     </Button>
                 </Grid>

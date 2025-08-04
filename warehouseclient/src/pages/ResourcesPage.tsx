@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { getResources } from '../api/warehouseApi';
 import type { Resource } from '../api/warehouseApi';
+import { Link } from 'react-router-dom';
 
 const ResourcesPage = () => {
     const [resources, setResources] = useState<Resource[]>([]);
@@ -51,7 +52,13 @@ const ResourcesPage = () => {
 
             <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item>
-                    <Button variant="contained" color="success">
+                    <Button
+                        variant="outlined"
+                        color="success"
+                        disabled={loading}
+                        component={Link}
+                        to="/add-resource"
+                    >
                         Добавить
                     </Button>
                 </Grid>

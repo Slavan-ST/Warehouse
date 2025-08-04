@@ -24,6 +24,7 @@ import {
 } from '@mui/material';
 import { getShipments, getResources, getUnits, getClients } from '../api/warehouseApi';
 import type { ShipmentItem, Resource, Unit } from '../api/warehouseApi';
+import { Link } from 'react-router-dom';
 
 const ShipmentsPage = () => {
     const [shipments, setShipments] = useState<ShipmentItem[]>([]);
@@ -200,7 +201,13 @@ const ShipmentsPage = () => {
                 <Button variant="outlined" onClick={handleResetFilters} disabled={loading}>
                     Сбросить
                 </Button>
-                <Button variant="contained" color="success" disabled={loading}>
+                <Button
+                    variant="outlined"
+                    color="success"
+                    disabled={loading}
+                    component={Link}
+                    to="/add-shipment"
+                >
                     Добавить
                 </Button>
             </Box>

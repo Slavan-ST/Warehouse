@@ -7,6 +7,10 @@ import ClientsPage from "./pages/ClientsPage";
 import UnitsPage from "./pages/UnitsPage";
 import ResourcesPage from "./pages/ResourcesPage";
 import AddReceiptPage from "./pages/AddReceiptPage";
+import AddShipmentPage from "./pages/AddShipmentPage";
+import AddClientPage from "./pages/AddClientPage";
+import AddUnitPage from "./pages/AddUnitPage";
+import AddResourcePage from "./pages/AddResourcePage";
 
 function App() {
     return (
@@ -21,6 +25,10 @@ function App() {
                     <Route path="units" element={<UnitsPage />} />
                     <Route path="resources" element={<ResourcesPage />} />
                     <Route path="add-receipt" element={<AddReceiptPage />} />
+                    <Route path="add-shipment" element={<AddShipmentPage />} />
+                    <Route path="add-client" element={<AddClientPage />} />
+                    <Route path="add-unit" element={<AddUnitPage />} />
+                    <Route path="add-resource" element={<AddResourcePage />} />
                 </Route>
             </Routes>
         </BrowserRouter>

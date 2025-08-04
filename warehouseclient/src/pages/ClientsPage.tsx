@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { getClients } from '../api/warehouseApi';
 import type { Client } from '../api/warehouseApi';
+import { Link } from 'react-router-dom';
 
 const ClientsPage = () => {
     const [clients, setClients] = useState<Client[]>([]);
@@ -51,7 +52,13 @@ const ClientsPage = () => {
 
             <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item>
-                    <Button variant="contained" color="success">
+                    <Button
+                        variant="outlined"
+                        color="success"
+                        disabled={loading}
+                        component={Link}
+                        to="/add-client"
+                    >
                         Добавить
                     </Button>
                 </Grid>
