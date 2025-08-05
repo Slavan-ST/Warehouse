@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using WarehouseAPI.Services;
-using WarehouseAPI.Models;
+using WarehouseAPI.DTO;
 using Microsoft.Extensions.Logging;
 
 namespace WarehouseAPI.Controllers
@@ -21,8 +21,7 @@ namespace WarehouseAPI.Controllers
             _logger = logger;
         }
 
-        // GET: api/balance
-        // Пример: api/balance?resourceIds=1,2&unitIds=3,4
+        // GET: api/balance?resourceIds=1,2&unitIds=3,4
         [HttpGet]
         public async Task<IActionResult> GetBalances(
             [FromQuery] int[] resourceIds,
@@ -30,7 +29,11 @@ namespace WarehouseAPI.Controllers
         {
             try
             {
-                var balances = await _balanceService.GetBalancesAsync();
+                var result = await _balanceService.GetBalancesAsync();
+                if (result.IsFailure)
+                    return StatusCode(500, new { message = result.Error });
+
+                var balances = result.Value;
 
                 // Фильтрация по ресурсам
                 if (resourceIds != null && resourceIds.Length > 0)
@@ -66,8 +69,11 @@ namespace WarehouseAPI.Controllers
 
             try
             {
-                var quantity = await _balanceService.GetAvailableQuantityAsync(resourceId, unitId);
-                return Ok(new { resourceId, unitId, availableQuantity = quantity });
+                var result = await _balanceService.GetAvailableQuantityAsync(resourceId, unitId);
+                if (result.IsFailure)
+                    return StatusCode(500, new { message = result.Error });
+
+                return Ok(new { resourceId, unitId, availableQuantity = result.Value });
             }
             catch (Exception ex)
             {

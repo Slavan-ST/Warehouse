@@ -1,9 +1,12 @@
-﻿using WarehouseAPI.Data;
-using WarehouseAPI.Models.Enums;
-using WarehouseAPI.Models;
-using CSharpFunctionalExtensions;
+﻿using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using WarehouseAPI.Data;
+using WarehouseAPI.Models;
+using WarehouseAPI.Models.Enums;
+using WarehouseAPI.DTO;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace WarehouseAPI.Services
 {
@@ -109,7 +112,6 @@ namespace WarehouseAPI.Services
             if (existingInDb == null || existingInDb.Status == EntityStatus.Archived)
                 return Result.Failure("Единица измерения не найдена или архивирована");
 
-            // Проверка на дубликат имени (кроме самой себя)
             var exists = await _context.UnitsOfMeasure
                 .AnyAsync(u => u.Name == unit.Name
                             && u.Id != unit.Id
@@ -134,19 +136,36 @@ namespace WarehouseAPI.Services
             }
         }
 
-        public async Task<List<UnitOfMeasure>> GetActiveUnitsAsync()
+        public async Task<List<UnitOfMeasureDto>> GetActiveUnitsAsync()
         {
-            return await _context.UnitsOfMeasure
-                .Where(u => u.Status == EntityStatus.Active)
-                .ToListAsync();
+            try
+            {
+                return await _context.UnitsOfMeasure
+                    .Where(u => u.Status == EntityStatus.Active)
+                    .Select(u => new UnitOfMeasureDto(u.Id, u.Name, u.Status))
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении списка активных единиц измерения");
+                return new List<UnitOfMeasureDto>();
+            }
         }
 
-        // Реализуем GetByIdAsync через базовый метод
-        public async Task<UnitOfMeasure?> GetByIdAsync(int id)
+        public async Task<UnitOfMeasureDto?> GetByIdAsync(int id)
         {
-            return await _context.UnitsOfMeasure
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Id == id);
+            try
+            {
+                return await _context.UnitsOfMeasure
+                    .Where(u => u.Id == id)
+                    .Select(u => new UnitOfMeasureDto(u.Id, u.Name, u.Status))
+                    .FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении единицы измерения с ID {Id}", id);
+                return null;
+            }
         }
     }
 }

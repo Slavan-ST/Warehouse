@@ -1,8 +1,12 @@
-﻿using WarehouseAPI.Data;
-using WarehouseAPI.Models;
+﻿using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using WarehouseAPI.Data;
+using WarehouseAPI.Models;
 using WarehouseAPI.Models.Enums;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using WarehouseAPI.DTO;
 
 namespace WarehouseAPI.Services
 {
@@ -17,7 +21,7 @@ namespace WarehouseAPI.Services
             _logger = logger;
         }
 
-        public async Task<List<Balance>> GetBalancesAsync()
+        public async Task<Result<List<BalanceDto>>> GetBalancesAsync()
         {
             try
             {
@@ -26,19 +30,27 @@ namespace WarehouseAPI.Services
                     .Include(b => b.UnitOfMeasure)
                     .Where(b => b.Resource.Status == EntityStatus.Active &&
                                 b.UnitOfMeasure.Status == EntityStatus.Active)
+                    .Select(b => new BalanceDto(
+                        b.Id,
+                        b.ResourceId,
+                        b.Resource.Name,
+                        b.UnitOfMeasureId,
+                        b.UnitOfMeasure.Name,
+                        b.Quantity
+                    ))
                     .ToListAsync();
 
                 _logger.LogInformation("Получено {Count} активных остатков", balances.Count);
-                return balances;
+                return Result.Success(balances);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при получении остатков");
-                throw; // Пусть контроллер решает, как обрабатывать
+                return Result.Failure<List<BalanceDto>>("Не удалось получить остатки");
             }
         }
 
-        public async Task<decimal> GetAvailableQuantityAsync(int resourceId, int unitId)
+        public async Task<Result<decimal>> GetAvailableQuantityAsync(int resourceId, int unitId)
         {
             try
             {
@@ -46,7 +58,7 @@ namespace WarehouseAPI.Services
                 {
                     _logger.LogWarning("Попытка получить количество с некорректными ID: ResourceId={ResourceId}, UnitId={UnitId}",
                         resourceId, unitId);
-                    return 0;
+                    return Result.Success(0m);
                 }
 
                 var balance = await _context.Balances
@@ -59,22 +71,20 @@ namespace WarehouseAPI.Services
                     })
                     .FirstOrDefaultAsync();
 
-                if (balance == null)
-                    return 0;
-
-                if (balance.ResourceStatus != EntityStatus.Active ||
+                if (balance == null ||
+                    balance.ResourceStatus != EntityStatus.Active ||
                     balance.UnitStatus != EntityStatus.Active)
                 {
-                    return 0;
+                    return Result.Success(0m);
                 }
 
-                return balance.Quantity;
+                return Result.Success(balance.Quantity);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при получении количества для ResourceId={ResourceId}, UnitId={UnitId}",
                     resourceId, unitId);
-                return 0;
+                return Result.Failure<decimal>("Ошибка при получении количества");
             }
         }
     }

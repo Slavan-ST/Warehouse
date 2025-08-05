@@ -1,184 +1,283 @@
 ﻿using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using WarehouseAPI.Data;
 using WarehouseAPI.Models;
 using WarehouseAPI.Models.Enums;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using WarehouseAPI.DTO.Requests;
 
 namespace WarehouseAPI.Services
 {
     public class ShipmentDocumentService : BaseService<ShipmentDocument>
     {
-        public ShipmentDocumentService(AppDbContext context, ILogger<ShipmentDocumentService> logger) : base(context, logger) { }
+        private readonly ILogger<ShipmentDocumentService> _logger;
 
-        public async Task<Result<ShipmentDocument>> CreateShipmentDocumentAsync(string number, int clientId, DateTime date)
+        public ShipmentDocumentService(AppDbContext context, ILogger<ShipmentDocumentService> logger)
+            : base(context, logger)
         {
+            _logger = logger;
+        }
+
+        public async Task<Result<ShipmentDocument>> CreateShipmentWithResourcesAsync(
+            string number,
+            int clientId,
+            DateTime date,
+            List<CreateShipmentResourceRequest> resources)
+        {
+            if (string.IsNullOrWhiteSpace(number))
+                return Result.Failure<ShipmentDocument>("Номер документа не может быть пустым");
+
+            if (date == default)
+                return Result.Failure<ShipmentDocument>("Дата не может быть пустой");
+
             if (await ExistsAsync(sd => sd.Number == number))
                 return Result.Failure<ShipmentDocument>("Документ с таким номером уже существует");
 
             var client = await _context.Clients.FindAsync(clientId);
-            if (client == null || client.Status == EntityStatus.Archived)
-                return Result.Failure<ShipmentDocument>("Клиент не найден или в архиве");
+            if (client?.Status != EntityStatus.Active)
+                return Result.Failure<ShipmentDocument>("Клиент не найден или архивирован");
 
-            var document = new ShipmentDocument
+            if (resources == null || !resources.Any())
+                return Result.Failure<ShipmentDocument>("Документ отгрузки должен содержать хотя бы один ресурс");
+
+            foreach (var sr in resources)
             {
-                Number = number,
-                ClientId = clientId,
-                Date = date,
-                Status = ShipmentDocumentStatus.Draft
-            };
+                if (sr.Quantity <= 0)
+                    return Result.Failure<ShipmentDocument>($"Количество для ресурса {sr.ResourceId} должно быть больше 0");
 
-            _context.ShipmentDocuments.Add(document);
-            await _context.SaveChangesAsync();
+                var resource = await _context.Resources.FindAsync(sr.ResourceId);
+                var unit = await _context.UnitsOfMeasure.FindAsync(sr.UnitOfMeasureId);
 
-            return Result.Success(document);
-        }
+                if (resource?.Status != EntityStatus.Active)
+                    return Result.Failure<ShipmentDocument>($"Ресурс с ID {sr.ResourceId} не найден или архивирован");
 
-        public async Task<Result> AddResourceToShipmentAsync(int documentId, int resourceId, int unitId, decimal quantity)
-        {
-            var document = await _context.ShipmentDocuments.FindAsync(documentId);
-            if (document == null)
-                return Result.Failure("Документ не найден");
+                if (unit?.Status != EntityStatus.Active)
+                    return Result.Failure<ShipmentDocument>($"Единица измерения с ID {sr.UnitOfMeasureId} не найдена или архивирована");
+            }
 
-            if (document.Status != ShipmentDocumentStatus.Draft)
-                return Result.Failure("Можно добавлять ресурсы только в черновик документа");
+            using var transaction = await _context.Database.BeginTransactionAsync();
 
-            var resource = await _context.Resources.FindAsync(resourceId);
-            var unit = await _context.UnitsOfMeasure.FindAsync(unitId);
-
-            if (resource == null || unit == null || resource.Status == EntityStatus.Archived || unit.Status == EntityStatus.Archived)
-                return Result.Failure("Ресурс или единица измерения не найдены или в архиве");
-
-            var shipmentResource = new ShipmentResource
+            try
             {
-                ShipmentDocumentId = documentId,
-                ResourceId = resourceId,
-                UnitOfMeasureId = unitId,
-                Quantity = quantity
-            };
+                var document = new ShipmentDocument
+                {
+                    Number = number,
+                    ClientId = clientId,
+                    Date = date,
+                    Status = ShipmentDocumentStatus.Draft
+                };
 
-            _context.ShipmentResources.Add(shipmentResource);
-            await _context.SaveChangesAsync();
+                _context.ShipmentDocuments.Add(document);
+                await _context.SaveChangesAsync();
 
-            return Result.Success();
+                document.ShipmentResources = resources.Select(sr => new ShipmentResource
+                {
+                    ShipmentDocumentId = document.Id,
+                    ResourceId = sr.ResourceId,
+                    UnitOfMeasureId = sr.UnitOfMeasureId,
+                    Quantity = sr.Quantity
+                }).ToList();
+
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Создан документ отгрузки ID {DocumentId}, номер '{Number}'", document.Id, number);
+                return Result.Success(document);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Ошибка при создании документа отгрузки с номером '{Number}'", number);
+                return Result.Failure<ShipmentDocument>("Не удалось создать документ отгрузки");
+            }
         }
 
         public async Task<Result> SignShipmentDocumentAsync(int id)
         {
-            var document = await _context.ShipmentDocuments
-                .Include(sd => sd.ShipmentResources)
-                .FirstOrDefaultAsync(sd => sd.Id == id);
+            using var transaction = await _context.Database.BeginTransactionAsync();
 
-            if (document == null)
-                return Result.Failure("Документ не найден");
-
-            if (document.Status != ShipmentDocumentStatus.Draft)
-                return Result.Failure("Можно подписывать только черновики документов");
-
-            if (!document.ShipmentResources.Any())
-                return Result.Failure("Документ отгрузки не может быть пустым");
-
-            // Проверяем наличие ресурсов на складе
-            foreach (var resource in document.ShipmentResources)
+            try
             {
-                var balance = await _context.Balances
-                    .FirstOrDefaultAsync(b => b.ResourceId == resource.ResourceId && b.UnitOfMeasureId == resource.UnitOfMeasureId);
+                var document = await _context.ShipmentDocuments
+                    .Include(sd => sd.ShipmentResources)
+                        .ThenInclude(sr => sr.Resource)
+                    .Include(sd => sd.ShipmentResources)
+                        .ThenInclude(sr => sr.UnitOfMeasure)
+                    .FirstOrDefaultAsync(sd => sd.Id == id);
 
-                if (balance == null || balance.Quantity < resource.Quantity)
-                    return Result.Failure($"Недостаточно ресурсов {resource.ResourceId} для отгрузки");
+                if (document == null)
+                    return Result.Failure("Документ не найден");
+
+                if (document.Status != ShipmentDocumentStatus.Draft)
+                    return Result.Failure("Можно подписывать только черновики");
+
+                if (!document.ShipmentResources.Any())
+                    return Result.Failure("Документ отгрузки не может быть пустым");
+
+                foreach (var sr in document.ShipmentResources)
+                {
+                    var balance = await _context.Balances
+                        .FirstOrDefaultAsync(b => b.ResourceId == sr.ResourceId && b.UnitOfMeasureId == sr.UnitOfMeasureId);
+
+                    if (balance == null || balance.Quantity < sr.Quantity)
+                        return Result.Failure($"Недостаточно ресурсов {sr.ResourceId} для отгрузки");
+                }
+
+                foreach (var sr in document.ShipmentResources)
+                {
+                    var balance = await _context.Balances
+                        .FirstAsync(b => b.ResourceId == sr.ResourceId && b.UnitOfMeasureId == sr.UnitOfMeasureId);
+                    balance.Quantity -= sr.Quantity;
+                }
+
+                document.Status = ShipmentDocumentStatus.Signed;
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Документ отгрузки с ID {DocumentId} подписан", id);
+                return Result.Success();
             }
-
-            // Уменьшаем баланс
-            foreach (var resource in document.ShipmentResources)
+            catch (Exception ex)
             {
-                var balance = await _context.Balances
-                    .FirstAsync(b => b.ResourceId == resource.ResourceId && b.UnitOfMeasureId == resource.UnitOfMeasureId);
-
-                balance.Quantity -= resource.Quantity;
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Ошибка при подписании документа отгрузки с ID {DocumentId}", id);
+                return Result.Failure("Не удалось подписать документ отгрузки");
             }
-
-            document.Status = ShipmentDocumentStatus.Signed;
-            await _context.SaveChangesAsync();
-
-            return Result.Success();
         }
 
         public async Task<Result> RevokeShipmentDocumentAsync(int id)
         {
-            var document = await _context.ShipmentDocuments
-                .Include(sd => sd.ShipmentResources)
-                .FirstOrDefaultAsync(sd => sd.Id == id);
+            using var transaction = await _context.Database.BeginTransactionAsync();
 
-            if (document == null)
-                return Result.Failure("Документ не найден");
-
-            if (document.Status != ShipmentDocumentStatus.Signed)
-                return Result.Failure("Можно отзывать только подписанные документы");
-
-            // Возвращаем ресурсы на склад
-            foreach (var resource in document.ShipmentResources)
+            try
             {
-                var balance = await _context.Balances
-                    .FirstOrDefaultAsync(b => b.ResourceId == resource.ResourceId && b.UnitOfMeasureId == resource.UnitOfMeasureId);
+                var document = await _context.ShipmentDocuments
+                    .Include(sd => sd.ShipmentResources)
+                        .ThenInclude(sr => sr.Resource)
+                    .Include(sd => sd.ShipmentResources)
+                        .ThenInclude(sr => sr.UnitOfMeasure)
+                    .FirstOrDefaultAsync(sd => sd.Id == id);
 
-                if (balance == null)
+                if (document == null)
+                    return Result.Failure("Документ не найден");
+
+                if (document.Status != ShipmentDocumentStatus.Signed)
+                    return Result.Failure("Можно отзывать только подписанные документы");
+
+                foreach (var sr in document.ShipmentResources)
                 {
-                    balance = new Balance
+                    var balance = await _context.Balances
+                        .FirstOrDefaultAsync(b => b.ResourceId == sr.ResourceId && b.UnitOfMeasureId == sr.UnitOfMeasureId);
+
+                    if (balance == null)
                     {
-                        ResourceId = resource.ResourceId,
-                        UnitOfMeasureId = resource.UnitOfMeasureId,
-                        Quantity = resource.Quantity
-                    };
-                    _context.Balances.Add(balance);
+                        balance = new Balance
+                        {
+                            ResourceId = sr.ResourceId,
+                            UnitOfMeasureId = sr.UnitOfMeasureId,
+                            Quantity = sr.Quantity
+                        };
+                        _context.Balances.Add(balance);
+                    }
+                    else
+                    {
+                        balance.Quantity += sr.Quantity;
+                    }
                 }
-                else
-                {
-                    balance.Quantity += resource.Quantity;
-                }
+
+                document.Status = ShipmentDocumentStatus.Revoked;
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Документ отгрузки с ID {DocumentId} отозван", id);
+                return Result.Success();
             }
-
-            document.Status = ShipmentDocumentStatus.Revoked;
-            await _context.SaveChangesAsync();
-
-            return Result.Success();
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Ошибка при отзыве документа отгрузки с ID {DocumentId}", id);
+                return Result.Failure("Не удалось отозвать документ отгрузки");
+            }
         }
 
         public async Task<Result> RemoveShipmentDocumentAsync(int id)
         {
-            var document = await _context.ShipmentDocuments
-                .Include(sd => sd.ShipmentResources)
-                .FirstOrDefaultAsync(sd => sd.Id == id);
+            using var transaction = await _context.Database.BeginTransactionAsync();
 
-            if (document == null)
-                return Result.Failure("Документ не найден");
+            try
+            {
+                var document = await _context.ShipmentDocuments
+                    .Include(sd => sd.ShipmentResources)
+                    .FirstOrDefaultAsync(sd => sd.Id == id);
 
-            if (document.Status != ShipmentDocumentStatus.Draft)
-                return Result.Failure("Можно удалять только черновики документов");
+                if (document == null)
+                    return Result.Failure("Документ не найден");
 
-            _context.ShipmentResources.RemoveRange(document.ShipmentResources);
-            _context.ShipmentDocuments.Remove(document);
-            await _context.SaveChangesAsync();
+                if (document.Status != ShipmentDocumentStatus.Draft)
+                    return Result.Failure("Можно удалять только черновики");
 
-            return Result.Success();
+                _context.ShipmentResources.RemoveRange(document.ShipmentResources);
+                _context.ShipmentDocuments.Remove(document);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Удалён документ отгрузки с ID {DocumentId}", id);
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Ошибка при удалении документа отгрузки с ID {DocumentId}", id);
+                return Result.Failure("Не удалось удалить документ отгрузки");
+            }
+        }
+
+        public async Task<Result<ShipmentDocument>> GetShipmentByIdAsync(int id)
+        {
+            try
+            {
+                var shipment = await _context.ShipmentDocuments
+                    .Include(sd => sd.Client)
+                    .Include(sd => sd.ShipmentResources)
+                        .ThenInclude(sr => sr.Resource)
+                    .Include(sd => sd.ShipmentResources)
+                        .ThenInclude(sr => sr.UnitOfMeasure)
+                    .FirstOrDefaultAsync(sd => sd.Id == id);
+
+                if (shipment == null)
+                    return Result.Failure<ShipmentDocument>($"Документ отгрузки с ID {id} не найден.");
+
+                return Result.Success(shipment);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении документа отгрузки с ID {Id}", id);
+                return Result.Failure<ShipmentDocument>("Не удалось получить документ");
+            }
         }
 
         public async Task<List<ShipmentDocument>> GetShipmentsWithResourcesAsync()
         {
-            return await _context.ShipmentDocuments
-                .Include(sd => sd.Client)
-                .Include(sd => sd.ShipmentResources)
-                    .ThenInclude(sr => sr.Resource)
-                .Include(sd => sd.ShipmentResources)
-                    .ThenInclude(sr => sr.UnitOfMeasure)
-                .OrderByDescending(sd => sd.Date)
-                .ToListAsync();
-        }
-
-        public async Task<List<string>> GetDocumentNumbersAsync()
-        {
-            return await _context.ShipmentDocuments
-                .Select(sd => sd.Number)
-                .Distinct()
-                .ToListAsync();
+            try
+            {
+                return await _context.ShipmentDocuments
+                    .Include(sd => sd.Client)
+                    .Include(sd => sd.ShipmentResources)
+                        .ThenInclude(sr => sr.Resource)
+                    .Include(sd => sd.ShipmentResources)
+                        .ThenInclude(sr => sr.UnitOfMeasure)
+                    .OrderByDescending(sd => sd.Date)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении списка документов отгрузки");
+                return new List<ShipmentDocument>();
+            }
         }
     }
 }

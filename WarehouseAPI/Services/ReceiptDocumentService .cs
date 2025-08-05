@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging;
 using WarehouseAPI.Data;
 using WarehouseAPI.Models;
 using WarehouseAPI.Models.Enums;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace WarehouseAPI.Services
 {
@@ -31,11 +33,9 @@ namespace WarehouseAPI.Services
             if (resources == null || !resources.Any())
                 return Result.Failure<ReceiptDocument>("Документ должен содержать хотя бы один ресурс");
 
-            // Проверка уникальности номера
             if (await ExistsAsync(rd => rd.Number == number))
                 return Result.Failure<ReceiptDocument>("Документ с таким номером уже существует");
 
-            // Проверка ресурсов и единиц измерения
             foreach (var rr in resources)
             {
                 if (rr.Quantity <= 0)
@@ -51,12 +51,10 @@ namespace WarehouseAPI.Services
                     return Result.Failure<ReceiptDocument>($"Единица измерения с ID {rr.UnitOfMeasureId} не найдена или архивирована");
             }
 
-            // Используем транзакцию
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
-                // Создаём документ
                 var document = new ReceiptDocument
                 {
                     Number = number,
@@ -65,9 +63,8 @@ namespace WarehouseAPI.Services
                 };
 
                 _context.ReceiptDocuments.Add(document);
-                await _context.SaveChangesAsync(); // чтобы получить ID
+                await _context.SaveChangesAsync();
 
-                // Добавляем ресурсы
                 document.ReceiptResources = resources.Select(rr => new ReceiptResource
                 {
                     ReceiptDocumentId = document.Id,
@@ -78,7 +75,6 @@ namespace WarehouseAPI.Services
 
                 await _context.SaveChangesAsync();
 
-                // Обновляем баланс
                 foreach (var rr in document.ReceiptResources)
                 {
                     await UpdateBalanceAsync(rr.ResourceId, rr.UnitOfMeasureId, rr.Quantity);
@@ -106,15 +102,14 @@ namespace WarehouseAPI.Services
             {
                 var document = await _context.ReceiptDocuments
                     .Include(rd => rd.ReceiptResources)
-                    .ThenInclude(rr => rr.Resource)
+                        .ThenInclude(rr => rr.Resource)
                     .Include(rd => rd.ReceiptResources)
-                    .ThenInclude(rr => rr.UnitOfMeasure)
+                        .ThenInclude(rr => rr.UnitOfMeasure)
                     .FirstOrDefaultAsync(rd => rd.Id == id);
 
                 if (document == null)
                     return Result.Failure("Документ не найден");
 
-                // Проверяем, что баланс позволяет отменить поступление
                 foreach (var rr in document.ReceiptResources)
                 {
                     var balance = await _context.Balances
@@ -124,7 +119,6 @@ namespace WarehouseAPI.Services
                         return Result.Failure($"Недостаточно ресурсов {rr.ResourceId} для отмены поступления");
                 }
 
-                // Уменьшаем баланс
                 foreach (var rr in document.ReceiptResources)
                 {
                     await UpdateBalanceAsync(rr.ResourceId, rr.UnitOfMeasureId, -rr.Quantity);
@@ -206,10 +200,11 @@ namespace WarehouseAPI.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при получении списка документов поступления");
-                throw;
+                return new List<ReceiptDocument>();
             }
         }
 
+        // Опционально: если нужно только для фильтрации
         public async Task<List<string>> GetDocumentNumbersAsync()
         {
             try

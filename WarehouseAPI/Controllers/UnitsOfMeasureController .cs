@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
-using WarehouseAPI.Models;
 using WarehouseAPI.Services;
+using WarehouseAPI.DTO;
 using WarehouseAPI.Models.Enums;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using AutoMapper;
+using Microsoft.EntityFrameworkCore;
+using WarehouseAPI.Models;
 
 namespace WarehouseAPI.Controllers
 {
@@ -13,13 +15,16 @@ namespace WarehouseAPI.Controllers
     public class UnitsOfMeasureController : ControllerBase
     {
         private readonly UnitOfMeasureService _unitService;
+        private readonly IMapper _mapper;
         private readonly ILogger<UnitsOfMeasureController> _logger;
 
         public UnitsOfMeasureController(
             UnitOfMeasureService unitService,
+            IMapper mapper,
             ILogger<UnitsOfMeasureController> logger)
         {
             _unitService = unitService;
+            _mapper = mapper;
             _logger = logger;
         }
 
@@ -31,9 +36,14 @@ namespace WarehouseAPI.Controllers
             {
                 var query = _unitService.Query();
                 if (!includeArchive)
+                {
                     query = query.Where(u => u.Status == EntityStatus.Active);
+                }
 
-                var units = await query.ToListAsync();
+                var units = await query
+                    .Select(u => new UnitOfMeasureDto(u.Id, u.Name, u.Status))
+                    .ToListAsync();
+
                 return Ok(units);
             }
             catch (Exception ex)
@@ -78,7 +88,10 @@ namespace WarehouseAPI.Controllers
             {
                 var result = await _unitService.CreateUnitAsync(unit.Name);
                 if (result.IsSuccess)
-                    return CreatedAtAction(nameof(GetUnit), new { id = result.Value.Id }, result.Value);
+                {
+                    var dto = _mapper.Map<UnitOfMeasureDto>(result.Value);
+                    return CreatedAtAction(nameof(GetUnit), new { id = dto.Id }, dto);
+                }
 
                 return BadRequest(new { message = result.Error });
             }

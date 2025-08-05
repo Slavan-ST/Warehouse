@@ -1,8 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using WarehouseAPI.Services;
-using WarehouseAPI.Models;
+using WarehouseAPI.DTO;
+using WarehouseAPI.DTO.Requests;
 using Microsoft.Extensions.Logging;
+using AutoMapper;
+using WarehouseAPI.Models;
 
 namespace WarehouseAPI.Controllers
 {
@@ -11,13 +14,16 @@ namespace WarehouseAPI.Controllers
     public class ReceiptsController : ControllerBase
     {
         private readonly ReceiptDocumentService _receiptService;
+        private readonly IMapper _mapper;
         private readonly ILogger<ReceiptsController> _logger;
 
         public ReceiptsController(
             ReceiptDocumentService receiptService,
+            IMapper mapper,
             ILogger<ReceiptsController> logger)
         {
             _receiptService = receiptService;
+            _mapper = mapper;
             _logger = logger;
         }
 
@@ -34,29 +40,25 @@ namespace WarehouseAPI.Controllers
             {
                 var receipts = await _receiptService.GetReceiptsWithResourcesAsync();
 
-                // Фильтрация по дате
                 if (fromDate.HasValue)
                     receipts = receipts.Where(r => r.Date >= fromDate.Value).ToList();
 
                 if (toDate.HasValue)
                     receipts = receipts.Where(r => r.Date <= toDate.Value).ToList();
 
-                // Фильтрация по номерам
-                if (documentNumbers != null && documentNumbers.Length > 0)
+                if (documentNumbers?.Length > 0)
                     receipts = receipts.Where(r => documentNumbers.Contains(r.Number)).ToList();
 
-                // Фильтрация по ресурсам и единицам
-                if (resourceIds != null && resourceIds.Length > 0 || unitIds != null && unitIds.Length > 0)
+                if (resourceIds?.Length > 0 || unitIds?.Length > 0)
                 {
-                    receipts = receipts.Where(r =>
-                        r.ReceiptResources.Any(rr =>
-                            (resourceIds == null || resourceIds.Length == 0 || resourceIds.Contains(rr.ResourceId)) &&
-                            (unitIds == null || unitIds.Length == 0 || unitIds.Contains(rr.UnitOfMeasureId))
-                        )
-                    ).ToList();
+                    receipts = receipts.Where(r => r.ReceiptResources.Any(rr =>
+                        (resourceIds == null || resourceIds.Contains(rr.ResourceId)) &&
+                        (unitIds == null || unitIds.Contains(rr.UnitOfMeasureId))
+                    )).ToList();
                 }
 
-                return Ok(receipts);
+                var dtos = _mapper.Map<List<ReceiptDocumentDto>>(receipts);
+                return Ok(dtos);
             }
             catch (Exception ex)
             {
@@ -74,10 +76,11 @@ namespace WarehouseAPI.Controllers
             try
             {
                 var result = await _receiptService.GetReceiptByIdAsync(id);
-                if (result.IsSuccess)
-                    return Ok(result.Value);
+                if (result.IsFailure)
+                    return NotFound(new { message = result.Error });
 
-                return NotFound(new { message = result.Error });
+                var dto = _mapper.Map<ReceiptDocumentDto>(result.Value);
+                return Ok(dto);
             }
             catch (Exception ex)
             {
@@ -88,29 +91,40 @@ namespace WarehouseAPI.Controllers
 
         // POST: api/receipts
         [HttpPost]
-        public async Task<IActionResult> CreateReceipt([FromBody] ReceiptDocument receipt)
+        public async Task<IActionResult> CreateReceipt([FromBody] CreateReceiptDocumentRequest request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
             try
             {
+                var receiptDocument = new ReceiptDocument
+                {
+                    Number = request.Number,
+                    Date = request.Date,
+                    ReceiptResources = request.Resources.Select(r => new ReceiptResource
+                    {
+                        ResourceId = r.ResourceId,
+                        UnitOfMeasureId = r.UnitOfMeasureId,
+                        Quantity = r.Quantity
+                    }).ToList()
+                };
+
                 var result = await _receiptService.CreateReceiptWithResourcesAsync(
-                    receipt.Number,
-                    receipt.Date,
-                    receipt.ReceiptResources?.ToList() ?? new List<ReceiptResource>()
+                    receiptDocument.Number,
+                    receiptDocument.Date,
+                    receiptDocument.ReceiptResources.ToList()
                 );
 
-                if (result.IsSuccess)
-                {
-                    return CreatedAtAction(nameof(GetReceipt), new { id = result.Value.Id }, result.Value);
-                }
+                if (result.IsFailure)
+                    return BadRequest(new { message = result.Error });
 
-                return BadRequest(new { message = result.Error });
+                var dto = _mapper.Map<ReceiptDocumentDto>(result.Value);
+                return CreatedAtAction(nameof(GetReceipt), new { id = dto.Id }, dto);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Неожиданная ошибка при создании документа поступления");
+                _logger.LogError(ex, "Ошибка при создании документа поступления");
                 return StatusCode(500, new { message = "Произошла ошибка при сохранении поступления." });
             }
         }

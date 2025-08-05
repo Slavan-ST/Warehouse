@@ -1,84 +1,127 @@
-﻿namespace WarehouseAPI.Controllers
+﻿using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
+using WarehouseAPI.Services;
+using WarehouseAPI.DTO;
+using WarehouseAPI.Models.Enums;
+using Microsoft.Extensions.Logging;
+using WarehouseAPI.Models;
+
+namespace WarehouseAPI.Controllers
 {
-    using Microsoft.AspNetCore.Mvc;
-    using System.Threading.Tasks;
-    using global::WarehouseAPI.Models.Enums;
-    using global::WarehouseAPI.Services;
-    using global::WarehouseAPI.Models;
-
-    namespace WarehouseAPI.Controllers
+    [ApiController]
+    [Route("api/[controller]")]
+    public class ClientsController : ControllerBase
     {
-        [ApiController]
-        [Route("api/[controller]")]
-        public class ClientsController : ControllerBase
+        private readonly ClientService _clientService;
+        private readonly ILogger<ClientsController> _logger;
+
+        public ClientsController(
+            ClientService clientService,
+            ILogger<ClientsController> logger)
         {
-            private readonly ClientService _clientService;
+            _clientService = clientService;
+            _logger = logger;
+        }
 
-            public ClientsController(ClientService clientService)
-            {
-                _clientService = clientService;
-            }
-
-            // GET: api/clients
-            [HttpGet]
-            public async Task<IActionResult> GetClients()
+        // GET: api/clients
+        [HttpGet]
+        public async Task<IActionResult> GetClients()
+        {
+            try
             {
                 var clients = await _clientService.GetActiveClientsAsync();
                 return Ok(clients);
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении списка клиентов");
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
+        }
 
-            // GET: api/clients/5
-            [HttpGet("{id}")]
-            public async Task<IActionResult> GetClient(int id)
+        // GET: api/clients/5
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetClient(int id)
+        {
+            if (id <= 0) return BadRequest("Некорректный ID");
+
+            try
             {
                 var client = await _clientService.GetByIdAsync(id);
-                if (client == null || client.Status == EntityStatus.Archived)
-                    return NotFound();
+                if (client == null)
+                    return NotFound("Клиент не найден или архивирован");
+
                 return Ok(client);
             }
-
-            // POST: api/clients
-            [HttpPost]
-            public async Task<IActionResult> CreateClient([FromBody] Client client)
+            catch (Exception ex)
             {
-                if (!ModelState.IsValid) return BadRequest(ModelState);
+                _logger.LogError(ex, "Ошибка при получении клиента с ID {Id}", id);
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
+        }
 
+        // POST: api/clients
+        [HttpPost]
+        public async Task<IActionResult> CreateClient([FromBody] Client client)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
                 var result = await _clientService.CreateClientAsync(client.Name, client.Address);
-                if (result.IsFailure)
-                    return BadRequest(result.Error);
+                if (result.IsSuccess)
+                    return CreatedAtAction(nameof(GetClient), new { id = result.Value.Id }, result.Value);
 
-                return CreatedAtAction(nameof(GetClient), new { id = result.Value.Id }, result.Value);
+                return BadRequest(new { message = result.Error });
             }
-
-            // PUT: api/clients/5
-            [HttpPut("{id}")]
-            public async Task<IActionResult> UpdateClient(int id, [FromBody] Client client)
+            catch (Exception ex)
             {
-                if (id != client.Id || !ModelState.IsValid) return BadRequest();
-
-                var existing = await _clientService.GetByIdAsync(id);
-                if (existing == null || existing.Status == EntityStatus.Archived)
-                    return NotFound();
-
-                existing.Name = client.Name;
-                existing.Address = client.Address;
-
-                var result = await _clientService.UpdateClientAsync(existing);
-                if (result.IsFailure)
-                    return BadRequest(result.Error);
-
-                return NoContent();
+                _logger.LogError(ex, "Ошибка при создании клиента");
+                return StatusCode(500, "Внутренняя ошибка сервера");
             }
+        }
 
-            // DELETE: api/clients/5 (архивация)
-            [HttpDelete("{id}")]
-            public async Task<IActionResult> ArchiveClient(int id)
+        // PUT: api/clients/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateClient(int id, [FromBody] Client client)
+        {
+            if (id != client.Id || id <= 0 || !ModelState.IsValid)
+                return BadRequest("Некорректные данные");
+
+            try
+            {
+                var result = await _clientService.UpdateClientAsync(client);
+                if (result.IsSuccess)
+                    return NoContent();
+
+                return BadRequest(new { message = result.Error });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при обновлении клиента с ID {Id}", id);
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
+        }
+
+        // DELETE: api/clients/5 (архивация)
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> ArchiveClient(int id)
+        {
+            if (id <= 0) return BadRequest("Некорректный ID");
+
+            try
             {
                 var result = await _clientService.ArchiveClientAsync(id);
-                if (result.IsFailure)
-                    return NotFound(result.Error);
+                if (result.IsSuccess)
+                    return NoContent();
 
-                return NoContent();
+                return NotFound(new { message = result.Error });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при архивации клиента с ID {Id}", id);
+                return StatusCode(500, "Внутренняя ошибка сервера");
             }
         }
     }

@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using WarehouseAPI.Models.Enums;
+using System.Threading.Tasks;
+using WarehouseAPI.Services;
+using WarehouseAPI.DTO;
+using Microsoft.Extensions.Logging;
+using AutoMapper;
 using WarehouseAPI.Models;
-using WarehouseAPI.Data;
 
 namespace WarehouseAPI.Controllers
 {
@@ -10,97 +12,147 @@ namespace WarehouseAPI.Controllers
     [Route("api/[controller]")]
     public class ResourcesController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly ResourceService _resourceService;
+        private readonly IMapper _mapper;
+        private readonly ILogger<ResourcesController> _logger;
 
-        public ResourcesController(AppDbContext context)
+        public ResourcesController(
+            ResourceService resourceService,
+            IMapper mapper,
+            ILogger<ResourcesController> logger)
         {
-            _context = context;
+            _resourceService = resourceService;
+            _mapper = mapper;
+            _logger = logger;
         }
 
         // GET: api/resources?includeArchive=true
         [HttpGet]
         public async Task<IActionResult> GetResources([FromQuery] bool includeArchive = false)
         {
-            var query = _context.Resources.AsQueryable();
-
-            if (!includeArchive)
+            try
             {
-                query = query.Where(r => r.Status == EntityStatus.Active);
-            }
+                var resources = includeArchive
+                    ? await _resourceService.GetAllAsync()
+                    : await _resourceService.GetActiveResourcesAsync();
 
-            var resources = await query.ToListAsync();
-            return Ok(resources);
+                return Ok(resources);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении ресурсов");
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
         }
 
         // GET: api/resources/5
         [HttpGet("{id}")]
         public async Task<IActionResult> GetResource(int id)
         {
-            var resource = await _context.Resources.FindAsync(id);
-            if (resource == null || resource.Status == EntityStatus.Archived)
-                return NotFound();
+            if (id <= 0) return BadRequest("Некорректный ID");
 
-            return Ok(resource);
+            try
+            {
+                var resource = await _resourceService.GetByIdAsync(id);
+                if (resource == null)
+                    return NotFound("Ресурс не найден или архивирован");
+
+                return Ok(resource);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении ресурса с ID {Id}", id);
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
         }
 
         // POST: api/resources
         [HttpPost]
         public async Task<IActionResult> CreateResource([FromBody] Resource resource)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-            resource.Status = EntityStatus.Active; // по умолчанию активен
-            _context.Resources.Add(resource);
-            await _context.SaveChangesAsync();
+            try
+            {
+                var result = await _resourceService.CreateResourceAsync(resource.Name);
+                if (result.IsSuccess)
+                {
+                    var dto = _mapper.Map<ResourceDto>(result.Value);
+                    return CreatedAtAction(nameof(GetResource), new { id = dto.Id }, dto);
+                }
 
-            return CreatedAtAction(nameof(GetResource), new { id = resource.Id }, resource);
+                return BadRequest(new { message = result.Error });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при создании ресурса");
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
         }
 
         // PUT: api/resources/5
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateResource(int id, [FromBody] Resource resource)
         {
-            if (id != resource.Id || !ModelState.IsValid) return BadRequest();
+            if (id != resource.Id || id <= 0 || !ModelState.IsValid)
+                return BadRequest("Некорректные данные");
 
-            var existing = await _context.Resources.FindAsync(id);
-            if (existing == null || existing.Status == EntityStatus.Archived)
-                return NotFound();
+            try
+            {
+                var result = await _resourceService.UpdateResourceAsync(resource);
+                if (result.IsSuccess)
+                    return NoContent();
 
-            existing.Name = resource.Name;
-            // статус не меняем, только имя
-
-            _context.Entry(existing).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+                return BadRequest(new { message = result.Error });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при обновлении ресурса с ID {Id}", id);
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
         }
 
         // DELETE: api/resources/5 (архивация)
         [HttpDelete("{id}")]
         public async Task<IActionResult> ArchiveResource(int id)
         {
-            var resource = await _context.Resources.FindAsync(id);
-            if (resource == null || resource.Status == EntityStatus.Archived)
-                return NotFound();
+            if (id <= 0) return BadRequest("Некорректный ID");
 
-            resource.Status = EntityStatus.Archived;
-            await _context.SaveChangesAsync();
+            try
+            {
+                var result = await _resourceService.ArchiveResourceAsync(id);
+                if (result.IsSuccess)
+                    return NoContent();
 
-            return NoContent();
+                return NotFound(new { message = result.Error });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при архивации ресурса с ID {Id}", id);
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
         }
 
         // POST: api/resources/5/restore
         [HttpPost("{id}/restore")]
         public async Task<IActionResult> RestoreResource(int id)
         {
-            var resource = await _context.Resources.FindAsync(id);
-            if (resource == null || resource.Status == EntityStatus.Active)
-                return NotFound();
+            if (id <= 0) return BadRequest("Некорректный ID");
 
-            resource.Status = EntityStatus.Active;
-            await _context.SaveChangesAsync();
+            try
+            {
+                var result = await _resourceService.RestoreResourceAsync(id);
+                if (result.IsSuccess)
+                    return NoContent();
 
-            return NoContent();
+                return NotFound(new { message = result.Error });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при восстановлении ресурса с ID {Id}", id);
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
         }
     }
 }
