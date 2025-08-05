@@ -1,7 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using WarehouseAPI.Models.Enums;
-using WarehouseAPI.Models;
+using System.Threading.Tasks;
 using WarehouseAPI.Services;
+using WarehouseAPI.Models;
+using Microsoft.Extensions.Logging;
 
 namespace WarehouseAPI.Controllers
 {
@@ -10,19 +11,17 @@ namespace WarehouseAPI.Controllers
     public class ReceiptsController : ControllerBase
     {
         private readonly ReceiptDocumentService _receiptService;
-        private readonly ResourceService _resourceService;
-        private readonly UnitOfMeasureService _unitService;
+        private readonly ILogger<ReceiptsController> _logger;
 
         public ReceiptsController(
             ReceiptDocumentService receiptService,
-            ResourceService resourceService,
-            UnitOfMeasureService unitService)
+            ILogger<ReceiptsController> logger)
         {
             _receiptService = receiptService;
-            _resourceService = resourceService;
-            _unitService = unitService;
+            _logger = logger;
         }
 
+        // GET: api/receipts?fromDate=2025-01-01&toDate=2025-01-31&documentNumbers=RC001,RC002&resourceIds=1&unitIds=2
         [HttpGet]
         public async Task<IActionResult> GetReceipts(
             [FromQuery] DateTime? fromDate,
@@ -31,71 +30,63 @@ namespace WarehouseAPI.Controllers
             [FromQuery] int[] resourceIds,
             [FromQuery] int[] unitIds)
         {
-            var receipts = await _receiptService.GetReceiptsWithResourcesAsync();
-
-            // Фильтрация по дате
-            if (fromDate.HasValue)
+            try
             {
-                receipts = receipts.Where(r => r.Date >= fromDate.Value).ToList();
-            }
+                var receipts = await _receiptService.GetReceiptsWithResourcesAsync();
 
-            if (toDate.HasValue)
+                // Фильтрация по дате
+                if (fromDate.HasValue)
+                    receipts = receipts.Where(r => r.Date >= fromDate.Value).ToList();
+
+                if (toDate.HasValue)
+                    receipts = receipts.Where(r => r.Date <= toDate.Value).ToList();
+
+                // Фильтрация по номерам
+                if (documentNumbers != null && documentNumbers.Length > 0)
+                    receipts = receipts.Where(r => documentNumbers.Contains(r.Number)).ToList();
+
+                // Фильтрация по ресурсам и единицам
+                if (resourceIds != null && resourceIds.Length > 0 || unitIds != null && unitIds.Length > 0)
+                {
+                    receipts = receipts.Where(r =>
+                        r.ReceiptResources.Any(rr =>
+                            (resourceIds == null || resourceIds.Length == 0 || resourceIds.Contains(rr.ResourceId)) &&
+                            (unitIds == null || unitIds.Length == 0 || unitIds.Contains(rr.UnitOfMeasureId))
+                        )
+                    ).ToList();
+                }
+
+                return Ok(receipts);
+            }
+            catch (Exception ex)
             {
-                receipts = receipts.Where(r => r.Date <= toDate.Value).ToList();
+                _logger.LogError(ex, "Ошибка при получении документов поступления");
+                return StatusCode(500, "Внутренняя ошибка сервера");
             }
-
-            // Фильтрация по номерам документов
-            if (documentNumbers != null && documentNumbers.Length > 0)
-            {
-                receipts = receipts.Where(r => documentNumbers.Contains(r.Number)).ToList();
-            }
-
-            // Фильтрация по ресурсам и единицам измерения (в ресурсах документа)
-            if (resourceIds != null && resourceIds.Length > 0 || unitIds != null && unitIds.Length > 0)
-            {
-                receipts = receipts.Where(r =>
-                    r.ReceiptResources.Any(rr =>
-                        (resourceIds == null || resourceIds.Length == 0 || resourceIds.Contains(rr.ResourceId)) &&
-                        (unitIds == null || unitIds.Length == 0 || unitIds.Contains(rr.UnitOfMeasureId))
-                    )
-                ).ToList();
-            }
-
-            return Ok(receipts);
         }
 
-        [HttpGet("resources")]
-        public async Task<IActionResult> GetResources()
-        {
-            var resources = await _resourceService.GetActiveResourcesAsync();
-            return Ok(resources);
-        }
-
-        [HttpGet("units")]
-        public async Task<IActionResult> GetUnits()
-        {
-            var units = await _unitService.GetActiveUnitsAsync();
-            return Ok(units);
-        }
-
-        [HttpGet("document-numbers")]
-        public async Task<IActionResult> GetDocumentNumbers()
-        {
-            var numbers = await _receiptService.GetDocumentNumbersAsync();
-            return Ok(numbers);
-        }
-
+        // GET: api/receipts/5
         [HttpGet("{id}")]
         public async Task<IActionResult> GetReceipt(int id)
         {
-            var result = await _receiptService.GetReceiptByIdAsync(id);
+            if (id <= 0) return BadRequest("Некорректный ID");
 
-            if (result.IsSuccess)
-                return Ok(result.Value);
+            try
+            {
+                var result = await _receiptService.GetReceiptByIdAsync(id);
+                if (result.IsSuccess)
+                    return Ok(result.Value);
 
-            return NotFound(new { message = result.Error });
+                return NotFound(new { message = result.Error });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении документа поступления с ID {Id}", id);
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
         }
 
+        // POST: api/receipts
         [HttpPost]
         public async Task<IActionResult> CreateReceipt([FromBody] ReceiptDocument receipt)
         {
@@ -114,16 +105,35 @@ namespace WarehouseAPI.Controllers
                 {
                     return CreatedAtAction(nameof(GetReceipt), new { id = result.Value.Id }, result.Value);
                 }
-                else
-                {
-                    return BadRequest(new { message = result.Error });
-                }
+
+                return BadRequest(new { message = result.Error });
             }
             catch (Exception ex)
             {
-                // На случай неожиданных ошибок (например, DB)
+                _logger.LogError(ex, "Неожиданная ошибка при создании документа поступления");
                 return StatusCode(500, new { message = "Произошла ошибка при сохранении поступления." });
             }
         }
+
+        // DELETE: api/receipts/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteReceipt(int id)
+        {
+            if (id <= 0) return BadRequest("Некорректный ID");
+
+            try
+            {
+                var result = await _receiptService.RemoveReceiptDocumentAsync(id);
+                if (result.IsSuccess)
+                    return NoContent();
+
+                return NotFound(new { message = result.Error });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при удалении документа поступления с ID {Id}", id);
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
+        }
     }
-}
+}api

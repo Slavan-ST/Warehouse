@@ -1,11 +1,10 @@
-﻿// WarehouseAPI/Controllers/UnitsOfMeasureController.cs
-
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
-using global::WarehouseAPI.Models;
-using global::WarehouseAPI.Services;
+using WarehouseAPI.Models;
+using WarehouseAPI.Services;
 using WarehouseAPI.Models.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace WarehouseAPI.Controllers
 {
@@ -14,35 +13,58 @@ namespace WarehouseAPI.Controllers
     public class UnitsOfMeasureController : ControllerBase
     {
         private readonly UnitOfMeasureService _unitService;
+        private readonly ILogger<UnitsOfMeasureController> _logger;
 
-        public UnitsOfMeasureController(UnitOfMeasureService unitService)
+        public UnitsOfMeasureController(
+            UnitOfMeasureService unitService,
+            ILogger<UnitsOfMeasureController> logger)
         {
             _unitService = unitService;
+            _logger = logger;
         }
 
-        // GET: api/units
+        // GET: api/units?includeArchive=true
         [HttpGet]
         public async Task<IActionResult> GetUnits([FromQuery] bool includeArchive = false)
         {
-            var query = _unitService.Query(); // Используем базовый Query() из BaseService
-            if (!includeArchive)
+            try
             {
-                query = query.Where(u => u.Status == EntityStatus.Active);
-            }
+                var query = _unitService.Query();
+                if (!includeArchive)
+                    query = query.Where(u => u.Status == EntityStatus.Active);
 
-            var units = await query.ToListAsync();
-            return Ok(units);
+                var units = await query.ToListAsync();
+                return Ok(units);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении списка единиц измерения");
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
         }
 
         // GET: api/units/5
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUnit(int id)
         {
-            var unit = await _unitService.GetByIdAsync(id);
-            if (unit == null || unit.Status == EntityStatus.Archived)
-                return NotFound();
+            if (id <= 0) return BadRequest("Некорректный ID");
 
-            return Ok(unit);
+            try
+            {
+                var unit = await _unitService.GetByIdAsync(id);
+                if (unit == null)
+                    return NotFound("Единица измерения не найдена");
+
+                if (unit.Status == EntityStatus.Archived)
+                    return NotFound("Единица измерения архивирована");
+
+                return Ok(unit);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении единицы измерения с ID {Id}", id);
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
         }
 
         // POST: api/units
@@ -52,53 +74,83 @@ namespace WarehouseAPI.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _unitService.CreateUnitAsync(unit.Name);
-            if (result.IsFailure)
-                return BadRequest(result.Error);
+            try
+            {
+                var result = await _unitService.CreateUnitAsync(unit.Name);
+                if (result.IsSuccess)
+                    return CreatedAtAction(nameof(GetUnit), new { id = result.Value.Id }, result.Value);
 
-            return CreatedAtAction(nameof(GetUnit), new { id = result.Value.Id }, result.Value);
+                return BadRequest(new { message = result.Error });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при создании единицы измерения");
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
         }
 
         // PUT: api/units/5
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateUnit(int id, [FromBody] UnitOfMeasure unit)
         {
-            if (id != unit.Id || !ModelState.IsValid)
-                return BadRequest();
+            if (id != unit.Id || id <= 0 || !ModelState.IsValid)
+                return BadRequest("Некорректные данные");
 
-            var existing = await _unitService.GetByIdAsync(id);
-            if (existing == null || existing.Status == EntityStatus.Archived)
-                return NotFound();
+            try
+            {
+                var result = await _unitService.UpdateUnitAsync(unit);
+                if (result.IsSuccess)
+                    return NoContent();
 
-            existing.Name = unit.Name;
-
-            var result = await _unitService.UpdateUnitAsync(existing);
-            if (result.IsFailure)
-                return BadRequest(result.Error);
-
-            return NoContent();
+                return BadRequest(new { message = result.Error });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при обновлении единицы измерения с ID {Id}", id);
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
         }
 
         // DELETE: api/units/5 (архивация)
         [HttpDelete("{id}")]
         public async Task<IActionResult> ArchiveUnit(int id)
         {
-            var result = await _unitService.ArchiveUnitAsync(id);
-            if (result.IsFailure)
-                return NotFound(result.Error);
+            if (id <= 0) return BadRequest("Некорректный ID");
 
-            return NoContent();
+            try
+            {
+                var result = await _unitService.ArchiveUnitAsync(id);
+                if (result.IsSuccess)
+                    return NoContent();
+
+                return BadRequest(new { message = result.Error });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при архивации единицы измерения с ID {Id}", id);
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
         }
 
         // POST: api/units/5/restore
         [HttpPost("{id}/restore")]
         public async Task<IActionResult> RestoreUnit(int id)
         {
-            var result = await _unitService.RestoreUnitAsync(id);
-            if (result.IsFailure)
-                return NotFound(result.Error);
+            if (id <= 0) return BadRequest("Некорректный ID");
 
-            return NoContent();
+            try
+            {
+                var result = await _unitService.RestoreUnitAsync(id);
+                if (result.IsSuccess)
+                    return NoContent();
+
+                return BadRequest(new { message = result.Error });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при восстановлении единицы измерения с ID {Id}", id);
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
         }
     }
 }

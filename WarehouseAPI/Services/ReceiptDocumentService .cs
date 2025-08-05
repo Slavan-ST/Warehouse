@@ -1,6 +1,6 @@
 ﻿using CSharpFunctionalExtensions;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using WarehouseAPI.Data;
 using WarehouseAPI.Models;
 using WarehouseAPI.Models.Enums;
@@ -9,74 +9,142 @@ namespace WarehouseAPI.Services
 {
     public class ReceiptDocumentService : BaseService<ReceiptDocument>
     {
-        public ReceiptDocumentService(AppDbContext context, ILogger<ReceiptDocumentService> logger) : base(context, logger) { }
+        private readonly ILogger<ReceiptDocumentService> _logger;
 
-        public async Task<Result<ReceiptDocument>> CreateReceiptDocumentAsync(string number, DateTime date)
+        public ReceiptDocumentService(AppDbContext context, ILogger<ReceiptDocumentService> logger)
+            : base(context, logger)
         {
+            _logger = logger;
+        }
+
+        public async Task<Result<ReceiptDocument>> CreateReceiptWithResourcesAsync(
+            string number,
+            DateTime date,
+            List<ReceiptResource> resources)
+        {
+            if (string.IsNullOrWhiteSpace(number))
+                return Result.Failure<ReceiptDocument>("Номер документа не может быть пустым");
+
+            if (date == default)
+                return Result.Failure<ReceiptDocument>("Дата не может быть пустой");
+
+            if (resources == null || !resources.Any())
+                return Result.Failure<ReceiptDocument>("Документ должен содержать хотя бы один ресурс");
+
+            // Проверка уникальности номера
             if (await ExistsAsync(rd => rd.Number == number))
                 return Result.Failure<ReceiptDocument>("Документ с таким номером уже существует");
 
-            var document = new ReceiptDocument { Number = number, Date = date };
-            _context.ReceiptDocuments.Add(document);
-            await _context.SaveChangesAsync();
-
-            return Result.Success(document);
-        }
-
-        public async Task<Result> AddResourceToReceiptAsync(int documentId, int resourceId, int unitId, decimal quantity)
-        {
-            var resource = await _context.Resources.FindAsync(resourceId);
-            var unit = await _context.UnitsOfMeasure.FindAsync(unitId);
-
-            if (resource == null || unit == null || resource.Status == EntityStatus.Archived || unit.Status == EntityStatus.Archived)
-                return Result.Failure("Ресурс или единица измерения не найдены или в архиве");
-
-            var receiptResource = new ReceiptResource
+            // Проверка ресурсов и единиц измерения
+            foreach (var rr in resources)
             {
-                ReceiptDocumentId = documentId,
-                ResourceId = resourceId,
-                UnitOfMeasureId = unitId,
-                Quantity = quantity
-            };
+                if (rr.Quantity <= 0)
+                    return Result.Failure<ReceiptDocument>($"Количество для ресурса {rr.ResourceId} должно быть больше 0");
 
-            _context.ReceiptResources.Add(receiptResource);
-            await _context.SaveChangesAsync();
+                var resource = await _context.Resources.FindAsync(rr.ResourceId);
+                var unit = await _context.UnitsOfMeasure.FindAsync(rr.UnitOfMeasureId);
 
-            await UpdateBalanceAsync(resourceId, unitId, quantity);
+                if (resource?.Status != EntityStatus.Active)
+                    return Result.Failure<ReceiptDocument>($"Ресурс с ID {rr.ResourceId} не найден или архивирован");
 
-            return Result.Success();
+                if (unit?.Status != EntityStatus.Active)
+                    return Result.Failure<ReceiptDocument>($"Единица измерения с ID {rr.UnitOfMeasureId} не найдена или архивирована");
+            }
+
+            // Используем транзакцию
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Создаём документ
+                var document = new ReceiptDocument
+                {
+                    Number = number,
+                    Date = date,
+                    ReceiptResources = new List<ReceiptResource>()
+                };
+
+                _context.ReceiptDocuments.Add(document);
+                await _context.SaveChangesAsync(); // чтобы получить ID
+
+                // Добавляем ресурсы
+                document.ReceiptResources = resources.Select(rr => new ReceiptResource
+                {
+                    ReceiptDocumentId = document.Id,
+                    ResourceId = rr.ResourceId,
+                    UnitOfMeasureId = rr.UnitOfMeasureId,
+                    Quantity = rr.Quantity
+                }).ToList();
+
+                await _context.SaveChangesAsync();
+
+                // Обновляем баланс
+                foreach (var rr in document.ReceiptResources)
+                {
+                    await UpdateBalanceAsync(rr.ResourceId, rr.UnitOfMeasureId, rr.Quantity);
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Создан документ поступления ID {DocumentId}, номер '{Number}'", document.Id, number);
+                return Result.Success(document);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Ошибка при создании документа поступления с номером '{Number}'", number);
+                return Result.Failure<ReceiptDocument>("Не удалось создать документ поступления");
+            }
         }
 
         public async Task<Result> RemoveReceiptDocumentAsync(int id)
         {
-            var document = await _context.ReceiptDocuments
-                .Include(rd => rd.ReceiptResources)
-                .FirstOrDefaultAsync(rd => rd.Id == id);
+            using var transaction = await _context.Database.BeginTransactionAsync();
 
-            if (document == null)
-                return Result.Failure("Документ не найден");
-
-            // Проверяем, что на складе достаточно ресурсов для отмены поступления
-            foreach (var resource in document.ReceiptResources)
+            try
             {
-                var balance = await _context.Balances
-                    .FirstOrDefaultAsync(b => b.ResourceId == resource.ResourceId && b.UnitOfMeasureId == resource.UnitOfMeasureId);
+                var document = await _context.ReceiptDocuments
+                    .Include(rd => rd.ReceiptResources)
+                    .ThenInclude(rr => rr.Resource)
+                    .Include(rd => rd.ReceiptResources)
+                    .ThenInclude(rr => rr.UnitOfMeasure)
+                    .FirstOrDefaultAsync(rd => rd.Id == id);
 
-                if (balance == null || balance.Quantity < resource.Quantity)
-                    return Result.Failure($"Недостаточно ресурсов {resource.ResourceId} для отмены поступления");
+                if (document == null)
+                    return Result.Failure("Документ не найден");
+
+                // Проверяем, что баланс позволяет отменить поступление
+                foreach (var rr in document.ReceiptResources)
+                {
+                    var balance = await _context.Balances
+                        .FirstOrDefaultAsync(b => b.ResourceId == rr.ResourceId && b.UnitOfMeasureId == rr.UnitOfMeasureId);
+
+                    if (balance == null || balance.Quantity < rr.Quantity)
+                        return Result.Failure($"Недостаточно ресурсов {rr.ResourceId} для отмены поступления");
+                }
+
+                // Уменьшаем баланс
+                foreach (var rr in document.ReceiptResources)
+                {
+                    await UpdateBalanceAsync(rr.ResourceId, rr.UnitOfMeasureId, -rr.Quantity);
+                }
+
+                _context.ReceiptResources.RemoveRange(document.ReceiptResources);
+                _context.ReceiptDocuments.Remove(document);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Удалён документ поступления ID {DocumentId}", id);
+                return Result.Success();
             }
-
-            // Уменьшаем баланс
-            foreach (var resource in document.ReceiptResources)
+            catch (Exception ex)
             {
-                await UpdateBalanceAsync(resource.ResourceId, resource.UnitOfMeasureId, -resource.Quantity);
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Ошибка при удалении документа поступления с ID {DocumentId}", id);
+                return Result.Failure("Не удалось удалить документ поступления");
             }
-
-            _context.ReceiptResources.RemoveRange(document.ReceiptResources);
-            _context.ReceiptDocuments.Remove(document);
-            await _context.SaveChangesAsync();
-
-            return Result.Success();
         }
 
         private async Task UpdateBalanceAsync(int resourceId, int unitId, decimal quantity)
@@ -98,94 +166,64 @@ namespace WarehouseAPI.Services
             {
                 balance.Quantity += quantity;
             }
+        }
 
-            await _context.SaveChangesAsync();
+        public async Task<Result<ReceiptDocument>> GetReceiptByIdAsync(int id)
+        {
+            try
+            {
+                var receipt = await _context.ReceiptDocuments
+                    .Include(rd => rd.ReceiptResources)
+                        .ThenInclude(rr => rr.Resource)
+                    .Include(rd => rd.ReceiptResources)
+                        .ThenInclude(rr => rr.UnitOfMeasure)
+                    .FirstOrDefaultAsync(rd => rd.Id == id);
+
+                if (receipt == null)
+                    return Result.Failure<ReceiptDocument>($"Документ поступления с ID {id} не найден.");
+
+                return Result.Success(receipt);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении документа поступления с ID {Id}", id);
+                return Result.Failure<ReceiptDocument>("Не удалось получить документ");
+            }
         }
 
         public async Task<List<ReceiptDocument>> GetReceiptsWithResourcesAsync()
         {
-            return await _context.ReceiptDocuments
-                .Include(rd => rd.ReceiptResources)
-                    .ThenInclude(rr => rr.Resource)
-                .Include(rd => rd.ReceiptResources)
-                    .ThenInclude(rr => rr.UnitOfMeasure)
-                .OrderByDescending(rd => rd.Date)
-                .ToListAsync();
+            try
+            {
+                return await _context.ReceiptDocuments
+                    .Include(rd => rd.ReceiptResources)
+                        .ThenInclude(rr => rr.Resource)
+                    .Include(rd => rd.ReceiptResources)
+                        .ThenInclude(rr => rr.UnitOfMeasure)
+                    .OrderByDescending(rd => rd.Date)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении списка документов поступления");
+                throw;
+            }
         }
 
         public async Task<List<string>> GetDocumentNumbersAsync()
         {
-            return await _context.ReceiptDocuments
-                .Select(rd => rd.Number)
-                .Distinct()
-                .ToListAsync();
-        }
-
-        // В ReceiptDocumentService.cs
-
-        public async Task<Result<ReceiptDocument>> GetReceiptByIdAsync(int id)
-        {
-            var receipt = await _context.ReceiptDocuments
-                .Include(rd => rd.ReceiptResources)
-                    .ThenInclude(rr => rr.Resource)
-                .Include(rd => rd.ReceiptResources)
-                    .ThenInclude(rr => rr.UnitOfMeasure)
-                .FirstOrDefaultAsync(rd => rd.Id == id);
-
-            if (receipt == null)
-                return Result.Failure<ReceiptDocument>($"Документ поступления с ID {id} не найден.");
-
-            return Result.Success(receipt);
-        }
-
-        public async Task<Result<ReceiptDocument>> CreateReceiptWithResourcesAsync(
-    string number,
-    DateTime date,
-    List<ReceiptResource> resources)
-        {
-            // Шаг 1: Проверяем номер документа
-            if (await ExistsAsync(rd => rd.Number == number))
-                return Result.Failure<ReceiptDocument>("Документ с таким номером уже существует");
-
-            // Шаг 2: Валидация ресурсов и единиц измерения
-            foreach (var rr in resources)
+            try
             {
-                var resource = await _context.Resources.FindAsync(rr.ResourceId);
-                var unit = await _context.UnitsOfMeasure.FindAsync(rr.UnitOfMeasureId);
-
-                if (resource?.Status != EntityStatus.Active)
-                    return Result.Failure<ReceiptDocument>($"Ресурс с ID {rr.ResourceId} не найден или в архиве.");
-
-                if (unit?.Status != EntityStatus.Active)
-                    return Result.Failure<ReceiptDocument>($"Единица измерения с ID {rr.UnitOfMeasureId} не найдена или в архиве.");
+                return await _context.ReceiptDocuments
+                    .Select(rd => rd.Number)
+                    .Distinct()
+                    .ToListAsync();
             }
-
-            // Шаг 3: Создаём документ
-            var document = new ReceiptDocument
+            catch (Exception ex)
             {
-                Number = number,
-                Date = date,
-                ReceiptResources = new List<ReceiptResource>()
-            };
-
-            _context.ReceiptDocuments.Add(document);
-            await _context.SaveChangesAsync(); // чтобы получить Id
-
-            // Шаг 4: Добавляем ресурсы с правильным ReceiptDocumentId
-            document.ReceiptResources = resources.Select(rr => new ReceiptResource
-            {
-                ReceiptDocumentId = document.Id,
-                ResourceId = rr.ResourceId,
-                UnitOfMeasureId = rr.UnitOfMeasureId,
-                Quantity = rr.Quantity
-            }).ToList();
-
-            await _context.SaveChangesAsync();
-
-            return Result.Success(document);
+                _logger.LogError(ex, "Ошибка при получении номеров документов поступления");
+                return new List<string>();
+            }
         }
-
-
-
     }
 }
