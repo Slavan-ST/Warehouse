@@ -1,37 +1,51 @@
-﻿import { useState } from 'react';
-import {
-    Typography,
-    Box,
-    TextField,
-    Button,
-} from '@mui/material';
+﻿import React, { useState } from 'react';
+import { Typography, Box, TextField, Button } from '@mui/material';
+import { createResource } from '../api/warehouseApi'; // Import the API function
 
 const AddResourcePage = () => {
-    // Состояние для формы
+    // State for form data
     const [formData, setFormData] = useState({
         name: '',
     });
 
-    // Обработчик изменения значения поля "Наименование"
+    // State for loading and error messages
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Handle form input changes
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, name: e.target.value });
     };
 
-    // Функция сохранения нового ресурса
+    // Handle form submission
     const handleSubmit = async () => {
         try {
-            // Здесь должна быть реализация отправки данных на сервер
-            console.log('Сохранение нового ресурса:', formData);
+            setLoading(true);
+            setError(null);
+
+            // Validate form data
+            if (!formData.name) {
+                setError('Поле "Наименование" не может быть пустым');
+                return;
+            }
+
+            // Send POST request to create a new resource
+            await createResource(formData.name);
+
+            // Show success message
             alert('Ресурс успешно сохранен!');
+            setFormData({ name: '' }); // Clear form after successful submission
         } catch (err) {
             console.error('Ошибка сохранения ресурса:', err);
-            alert('Ошибка при сохранении ресурса');
+            setError('Ошибка при сохранении ресурса');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
         <Box sx={{ p: 3 }}>
-            <Typography variant="h4" gutterBottom>Ресурс</Typography>
+            <Typography variant="h4" gutterBottom>Добавление ресурса</Typography>
             <Box sx={{ mt: 2 }}>
                 {/* Поле для наименования */}
                 <TextField
@@ -40,6 +54,8 @@ const AddResourcePage = () => {
                     onChange={handleNameChange}
                     fullWidth
                     sx={{ mb: 2 }}
+                    helperText={error && error}
+                    error={!!error}
                 />
             </Box>
             {/* Кнопка сохранения */}
@@ -47,10 +63,10 @@ const AddResourcePage = () => {
                 variant="contained"
                 color="success"
                 onClick={handleSubmit}
-                disabled={!formData.name}
+                disabled={!formData.name || loading}
                 sx={{ mt: 2 }}
             >
-                Сохранить
+                {loading ? 'Сохранение...' : 'Сохранить'}
             </Button>
         </Box>
     );

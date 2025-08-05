@@ -1,37 +1,50 @@
-﻿import { useState } from 'react';
-import {
-    Typography,
-    Box,
-    TextField,
-    Button,
-} from '@mui/material';
+﻿import React, { useState } from 'react';
+import { Typography, Box, TextField, Button } from '@mui/material';
+import { createClient } from '../api/warehouseApi'; // Import the API function
 
 const AddClientPage = () => {
-    // Состояние для формы
+    // State for form data
     const [formData, setFormData] = useState({
         name: '',
         address: '',
     });
 
-    // Обработчик изменения значения поля "Наименование"
+    // State for loading and error messages
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Handle form input changes
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, name: e.target.value });
     };
 
-    // Обработчик изменения значения поля "Адрес"
     const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, address: e.target.value });
     };
 
-    // Функция сохранения нового клиента
+    // Handle form submission
     const handleSubmit = async () => {
         try {
-            // Здесь должна быть реализация отправки данных на сервер
-            console.log('Сохранение нового клиента:', formData);
+            setLoading(true);
+            setError(null);
+
+            // Validate form data
+            if (!formData.name || !formData.address) {
+                setError('Поля "Наименование" и "Адрес" не могут быть пустыми');
+                return;
+            }
+
+            // Send POST request to create a new client
+            await createClient(formData.name, formData.address);
+
+            // Show success message
             alert('Клиент успешно сохранен!');
+            setFormData({ name: '', address: '' }); // Clear form after successful submission
         } catch (err) {
             console.error('Ошибка сохранения клиента:', err);
-            alert('Ошибка при сохранении клиента');
+            setError('Ошибка при сохранении клиента');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -46,6 +59,8 @@ const AddClientPage = () => {
                     onChange={handleNameChange}
                     fullWidth
                     sx={{ mb: 2 }}
+                    helperText={error && error}
+                    error={!!error}
                 />
                 {/* Поле для адреса */}
                 <TextField
@@ -54,6 +69,8 @@ const AddClientPage = () => {
                     onChange={handleAddressChange}
                     fullWidth
                     sx={{ mb: 2 }}
+                    helperText={error && error}
+                    error={!!error}
                 />
             </Box>
             {/* Кнопка сохранения */}
@@ -61,10 +78,10 @@ const AddClientPage = () => {
                 variant="contained"
                 color="success"
                 onClick={handleSubmit}
-                disabled={!formData.name || !formData.address}
+                disabled={!formData.name || !formData.address || loading}
                 sx={{ mt: 2 }}
             >
-                Сохранить
+                {loading ? 'Сохранение...' : 'Сохранить'}
             </Button>
         </Box>
     );

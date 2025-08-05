@@ -46,5 +46,39 @@ namespace WarehouseAPI.Services
                 .Where(c => c.Status == EntityStatus.Active)
                 .ToListAsync();
         }
+
+        public async Task<Client?> GetByIdAsync(int id)
+        {
+            return await _context.Clients
+                .Where(c => c.Id == id)
+                .FirstOrDefaultAsync();
+        }
+
+        // WarehouseAPI/Services/ClientService.cs
+
+        public async Task<Result> UpdateClientAsync(Client client)
+        {
+            try
+            {
+                // Проверим, существует ли активный клиент с таким именем (кроме текущего)
+                var exists = await _context.Clients
+                    .AnyAsync(c => c.Name == client.Name
+                                && c.Id != client.Id
+                                && c.Status == EntityStatus.Active);
+
+                if (exists)
+                    return Result.Failure("Клиент с таким наименованием уже существует");
+
+                _context.Clients.Update(client);
+                await _context.SaveChangesAsync();
+
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при обновлении клиента с ID {ClientId}", client.Id);
+                return Result.Failure("Ошибка при сохранении изменений клиента");
+            }
+        }
     }
 }

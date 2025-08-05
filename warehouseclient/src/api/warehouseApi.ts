@@ -261,8 +261,70 @@ export const getShipments = async (
     }
 };
 
-// Добавим получение клиентов
+
+// Method to get all active clients
 export const getClients = async (): Promise<Client[]> => {
-    const response = await api.get<ApiResponse<Client>>('/Shipments/Clients');
+    const response = await api.get<ApiResponse<Client>>('/Clients');
     return response.data.$values;
+};
+
+// Method to get a client by ID
+export const getClientById = async (id: number): Promise<Client> => {
+    const response = await api.get<Client>(`/Clients/${id}`);
+    return response.data;
+};
+
+// Method to create a new client
+export const createClient = async (name: string, address: string): Promise<Client> => {
+    const response = await api.post<Client>('/Clients', { name, address });
+    return response.data;
+};
+
+// Method to update a client
+export const updateClient = async (id: number, name: string, address: string): Promise<void> => {
+    await api.put(`/Clients/${id}`, { name, address });
+};
+
+// Method to archive a client
+export const archiveClient = async (id: number): Promise<void> => {
+    await api.delete(`/Clients/${id}`);
+};
+
+// src/api/warehouseApi.ts
+
+// Function to create a new resource
+export const createResource = async (name: string): Promise<void> => {
+    try {
+        await api.post('/Resources', { name });
+    } catch (error) {
+        throw new Error('Не удалось создать ресурс');
+    }
+};
+
+// Function to get a resource by ID
+export const getResourceById = async (id: number): Promise<Resource> => {
+    try {
+        const response = await api.get<Resource>(`/Resources/${id}`);
+        return response.data;
+    } catch (error) {
+        throw new Error('Не удалось получить ресурс');
+    }
+};
+
+// Function to update a resource
+export const updateResource = async (id: number, name: string): Promise<void> => {
+    try {
+        await api.put(`/Resources/${id}`, { name });
+    } catch (error) {
+        throw new Error('Не удалось обновить ресурс');
+    }
+};
+
+// Function to archive a resource
+export const archiveResource = async (id: number): Promise<void> => {
+    try {
+        await api.delete(`/Resources/${id}`);
+    } catch (error) {
+        throw new Error('Не удалось архивировать ресурс');
+    }
 };

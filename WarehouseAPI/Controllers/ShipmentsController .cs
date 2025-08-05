@@ -86,11 +86,5 @@ namespace WarehouseAPI.Controllers
             return Ok(numbers);
         }
 
-        [HttpGet("clients")]
-        public async Task<IActionResult> GetClients()
-        {
-            var clients = await _clientService.GetActiveClientsAsync();
-            return Ok(clients);
-        }
     }
 }
