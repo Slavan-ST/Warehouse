@@ -5,6 +5,8 @@ using System.Text.Json.Serialization;
 using TechTalk.SpecFlow.Assist;
 using WarehouseAPI.Data;
 using WarehouseAPI.Services;
+using AutoMapper;
+using WarehouseAPI.Mapping;
 
 namespace WarehouseAPI
 {
@@ -39,17 +41,22 @@ namespace WarehouseAPI
                           .AllowAnyHeader();
                 });
             });
-            builder.Services.AddControllers().AddJsonOptions(options =>
-            {
-                options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
-                options.JsonSerializerOptions.WriteIndented = true;
-            });
+            builder.Services
+                .AddControllers()
+                .AddJsonOptions(options =>
+                 {
+                     options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+                 });
+
+
+
+            // Добавляем AutoMapper
+            builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 
             builder.Services.AddControllers();
 
-            builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+            builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
             builder.Services.AddScoped<ResourceService>();
             builder.Services.AddScoped<UnitOfMeasureService>();
             builder.Services.AddScoped<ClientService>();
