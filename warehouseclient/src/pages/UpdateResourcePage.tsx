@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
+п»їimport React, { useState, useEffect } from 'react';
 import { Typography, Box, TextField, Button } from '@mui/material';
 import { getResourceById, updateResource, archiveResource } from '../api/warehouseApi';
+import { useParams } from 'react-router-dom';
 
 interface Resource {
     id: number;
     name: string;
 }
 
-const UpdateResourcePage = ({ resourceId }: { resourceId: number }) => {
+const UpdateResourcePage = () => {
+    const { id } = useParams<{ id: string }>();
+    const resourceId = Number(id);
     // State for form data
     const [resource, setResource] = useState<Resource | null>(null);
     const [formData, setFormData] = useState({
@@ -26,8 +29,8 @@ const UpdateResourcePage = ({ resourceId }: { resourceId: number }) => {
                 setResource(fetchedResource);
                 setFormData({ name: fetchedResource.name });
             } catch (err) {
-                console.error('Ошибка получения ресурса:', err);
-                setError('Не удалось загрузить данные ресурса');
+                console.error('РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ СЂРµСЃСѓСЂСЃР°:', err);
+                setError('РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РґР°РЅРЅС‹Рµ СЂРµСЃСѓСЂСЃР°');
             }
         };
 
@@ -47,7 +50,7 @@ const UpdateResourcePage = ({ resourceId }: { resourceId: number }) => {
 
             // Validate form data
             if (!formData.name) {
-                setError('Поле "Наименование" не может быть пустым');
+                setError('РџРѕР»Рµ "РќР°РёРјРµРЅРѕРІР°РЅРёРµ" РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј');
                 return;
             }
 
@@ -55,11 +58,11 @@ const UpdateResourcePage = ({ resourceId }: { resourceId: number }) => {
             await updateResource(resourceId, formData.name);
 
             // Show success message
-            alert('Ресурс успешно обновлен!');
+            alert('Р РµСЃСѓСЂСЃ СѓСЃРїРµС€РЅРѕ РѕР±РЅРѕРІР»РµРЅ!');
             setFormData({ name: formData.name }); // Refresh form data
         } catch (err) {
-            console.error('Ошибка обновления ресурса:', err);
-            setError('Ошибка при обновлении ресурса');
+            console.error('РћС€РёР±РєР° РѕР±РЅРѕРІР»РµРЅРёСЏ СЂРµСЃСѓСЂСЃР°:', err);
+            setError('РћС€РёР±РєР° РїСЂРё РѕР±РЅРѕРІР»РµРЅРёРё СЂРµСЃСѓСЂСЃР°');
         } finally {
             setLoading(false);
         }
@@ -75,27 +78,27 @@ const UpdateResourcePage = ({ resourceId }: { resourceId: number }) => {
             await archiveResource(resourceId);
 
             // Show success message
-            alert('Ресурс успешно архивирован!');
+            alert('Р РµСЃСѓСЂСЃ СѓСЃРїРµС€РЅРѕ Р°СЂС…РёРІРёСЂРѕРІР°РЅ!');
             window.location.href = '/resources'; // Redirect to resource list
         } catch (err) {
-            console.error('Ошибка архивации ресурса:', err);
-            setError('Ошибка при архивации ресурса');
+            console.error('РћС€РёР±РєР° Р°СЂС…РёРІР°С†РёРё СЂРµСЃСѓСЂСЃР°:', err);
+            setError('РћС€РёР±РєР° РїСЂРё Р°СЂС…РёРІР°С†РёРё СЂРµСЃСѓСЂСЃР°');
         } finally {
             setLoading(false);
         }
     };
 
     if (!resource) {
-        return <div>Загрузка...</div>;
+        return <div>Р—Р°РіСЂСѓР·РєР°...</div>;
     }
 
     return (
         <Box sx={{ p: 3 }}>
-            <Typography variant="h4" gutterBottom>Ресурс</Typography>
+            <Typography variant="h4" gutterBottom>Р РµСЃСѓСЂСЃ</Typography>
             <Box sx={{ mt: 2 }}>
-                {/* Поле для наименования */}
+                {/* РџРѕР»Рµ РґР»СЏ РЅР°РёРјРµРЅРѕРІР°РЅРёСЏ */}
                 <TextField
-                    label="Наименование"
+                    label="РќР°РёРјРµРЅРѕРІР°РЅРёРµ"
                     value={formData.name}
                     onChange={handleNameChange}
                     fullWidth
@@ -113,7 +116,7 @@ const UpdateResourcePage = ({ resourceId }: { resourceId: number }) => {
                     disabled={!formData.name || loading}
                     sx={{ mr: 2 }}
                 >
-                    {loading ? 'Обновление...' : 'Сохранить'}
+                    {loading ? 'РћР±РЅРѕРІР»РµРЅРёРµ...' : 'РЎРѕС…СЂР°РЅРёС‚СЊ'}
                 </Button>
                 <Button
                     variant="contained"
@@ -121,7 +124,7 @@ const UpdateResourcePage = ({ resourceId }: { resourceId: number }) => {
                     onClick={handleArchive}
                     disabled={loading}
                 >
-                    {loading ? 'Архивация...' : 'Удалить'}
+                    {loading ? 'РђСЂС…РёРІР°С†РёСЏ...' : 'РЈРґР°Р»РёС‚СЊ'}
                 </Button>
                 <Button
                     variant="contained"
@@ -129,7 +132,7 @@ const UpdateResourcePage = ({ resourceId }: { resourceId: number }) => {
                     onClick={handleArchive}
                     disabled={loading}
                 >
-                    {loading ? 'Архивация...' : 'В архив'}
+                    {loading ? 'РђСЂС…РёРІР°С†РёСЏ...' : 'Р’ Р°СЂС…РёРІ'}
                 </Button>
             </Box>
         </Box>

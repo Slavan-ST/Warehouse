@@ -1,37 +1,49 @@
-﻿import { useState } from 'react';
-import {
-    Typography,
-    Box,
-    TextField,
-    Button,
-} from '@mui/material';
+﻿import React, { useState } from 'react';
+import { Typography, Box, TextField, Button, Alert } from '@mui/material';
+import { createUnit } from '../api/warehouseApi';
 
 const AddUnitPage = () => {
-    // Состояние для формы
     const [formData, setFormData] = useState({
         name: '',
     });
 
-    // Обработчик изменения значения поля "Наименование"
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Handle form input changes
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, name: e.target.value });
     };
 
-    // Функция сохранения новой единицы измерения
+    // Handle form submission
     const handleSubmit = async () => {
         try {
-            // Здесь должна быть реализация отправки данных на сервер
-            console.log('Сохранение новой единицы измерения:', formData);
+            setLoading(true);
+            setError(null);
+
+            // Validate form data
+            if (!formData.name) {
+                setError('Поле "Наименование" не может быть пустым');
+                return;
+            }
+
+            // Send POST request to create a new unit of measure
+            await createUnit(formData.name);
+
+            // Show success message
             alert('Единица измерения успешно сохранена!');
+            setFormData({ name: '' }); // Clear form after successful submission
         } catch (err) {
             console.error('Ошибка сохранения единицы измерения:', err);
-            alert('Ошибка при сохранении единицы измерения');
+            setError('Ошибка при сохранении единицы измерения');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
         <Box sx={{ p: 3 }}>
-            <Typography variant="h4" gutterBottom>Единицы измерения</Typography>
+            <Typography variant="h4" gutterBottom>Добавление единицы измерения</Typography>
             <Box sx={{ mt: 2 }}>
                 {/* Поле для наименования */}
                 <TextField
@@ -40,6 +52,8 @@ const AddUnitPage = () => {
                     onChange={handleNameChange}
                     fullWidth
                     sx={{ mb: 2 }}
+                    helperText={error && error}
+                    error={!!error}
                 />
             </Box>
             {/* Кнопка сохранения */}
@@ -47,10 +61,10 @@ const AddUnitPage = () => {
                 variant="contained"
                 color="success"
                 onClick={handleSubmit}
-                disabled={!formData.name}
+                disabled={!formData.name || loading}
                 sx={{ mt: 2 }}
             >
-                Сохранить
+                {loading ? 'Сохранение...' : 'Сохранить'}
             </Button>
         </Box>
     );

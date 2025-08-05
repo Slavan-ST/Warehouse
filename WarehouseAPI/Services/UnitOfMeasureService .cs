@@ -48,5 +48,58 @@ namespace WarehouseAPI.Services
                 .Where(u => u.Status == EntityStatus.Active)
                 .ToListAsync();
         }
+
+        // WarehouseAPI/Services/UnitOfMeasureService.cs
+
+        public async Task<Result> RestoreUnitAsync(int id)
+        {
+            var unit = await _context.UnitsOfMeasure.FindAsync(id);
+            if (unit == null || unit.Status == EntityStatus.Active)
+                return Result.Failure("Единица измерения не найдена или уже активна");
+
+            unit.Status = EntityStatus.Active;
+            try
+            {
+                await _context.SaveChangesAsync();
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при восстановлении единицы измерения с ID {UnitId}", id);
+                return Result.Failure("Ошибка при восстановлении");
+            }
+        }
+
+        public async Task<UnitOfMeasure?> GetByIdAsync(int id)
+        {
+            return await _context.UnitsOfMeasure
+                .Where(u => u.Id == id)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<Result> UpdateUnitAsync(UnitOfMeasure unit)
+        {
+            try
+            {
+                // Проверим, существует ли активная единица с таким именем (кроме текущей)
+                var exists = await _context.UnitsOfMeasure
+                    .AnyAsync(u => u.Name == unit.Name
+                               && u.Id != unit.Id
+                               && u.Status == EntityStatus.Active);
+
+                if (exists)
+                    return Result.Failure("Единица измерения с таким названием уже существует");
+
+                _context.UnitsOfMeasure.Update(unit);
+                await _context.SaveChangesAsync();
+
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при обновлении единицы измерения с ID {UnitId}", unit.Id);
+                return Result.Failure("Ошибка при сохранении изменений");
+            }
+        }
     }
 }

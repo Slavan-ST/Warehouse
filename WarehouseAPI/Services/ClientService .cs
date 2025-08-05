@@ -43,6 +43,7 @@ namespace WarehouseAPI.Services
         public async Task<List<Client>> GetActiveClientsAsync()
         {
             return await _context.Clients
+                .Include(c => c.ShipmentDocuments)
                 .Where(c => c.Status == EntityStatus.Active)
                 .ToListAsync();
         }
@@ -50,6 +51,7 @@ namespace WarehouseAPI.Services
         public async Task<Client?> GetByIdAsync(int id)
         {
             return await _context.Clients
+                .Include(c => c.ShipmentDocuments)
                 .Where(c => c.Id == id)
                 .FirstOrDefaultAsync();
         }

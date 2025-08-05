@@ -11,24 +11,62 @@ import AddShipmentPage from "./pages/AddShipmentPage";
 import AddClientPage from "./pages/AddClientPage";
 import AddUnitPage from "./pages/AddUnitPage";
 import AddResourcePage from "./pages/AddResourcePage";
+import UpdateClientPage from "./pages/UpdateClientPage";
+import UpdateResourcePage from "./pages/UpdateResourcePage";
+import UpdateUnitPage from "./pages/UpdateUnitPage";
+import UpdateReceiptPage from "./pages/UpdateReceiptPage";
+import UpdateShipmentPage from "./pages/UpdateShipmentPage";
 
 function App() {
     return (
         <BrowserRouter>
             <Routes>
                 <Route path="/" element={<Layout />}>
+                    {/* Главная страница */}
                     <Route index element={<BalancePage />} />
+
+                    {/* Основные разделы */}
                     <Route path="balance" element={<BalancePage />} />
                     <Route path="incomes" element={<IncomesPage />} />
                     <Route path="shipments" element={<ShipmentsPage />} />
-                    <Route path="clients" element={<ClientsPage />} />
-                    <Route path="units" element={<UnitsPage />} />
-                    <Route path="resources" element={<ResourcesPage />} />
+
+                    {/* Клиенты */}
+                    <Route path="clients">
+                        <Route index element={<ClientsPage />} />
+                        <Route path="add" element={<AddClientPage />} />
+                        <Route path=":id" element={<UpdateClientPage />} />
+                    </Route>
+
+                    {/* Единицы измерения */}
+                    <Route path="units">
+                        <Route index element={<UnitsPage />} />
+                        <Route path="add" element={<AddUnitPage />} />
+                        <Route path=":id" element={<UpdateUnitPage />} />
+                    </Route>
+
+                    {/* Ресурсы */}
+                    <Route path="resources">
+                        <Route index element={<ResourcesPage />} />
+                        <Route path="add" element={<AddResourcePage />} />
+                        <Route path=":id" element={<UpdateResourcePage />} />
+                    </Route>
+
+                    {/* Документы (поступления и отгрузки) */}
                     <Route path="add-receipt" element={<AddReceiptPage />} />
                     <Route path="add-shipment" element={<AddShipmentPage />} />
-                    <Route path="add-client" element={<AddClientPage />} />
-                    <Route path="add-unit" element={<AddUnitPage />} />
-                    <Route path="add-resource" element={<AddResourcePage />} />
+
+                    <Route path="receipts">
+                        <Route index element={<IncomesPage />} />
+                        <Route path="add" element={<AddReceiptPage />} />
+                        <Route path=":id" element={<UpdateReceiptPage />} />
+                    </Route>
+
+                    <Route path="shipments">
+                        <Route index element={<ShipmentsPage />} />
+                        <Route path="add" element={<AddShipmentPage />} />
+                        <Route path=":id" element={<UpdateShipmentPage />} />
+                    </Route>
+
                 </Route>
             </Routes>
         </BrowserRouter>

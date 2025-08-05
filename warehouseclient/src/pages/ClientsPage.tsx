@@ -67,7 +67,7 @@ const ClientsPage = () => {
                         color="success"
                         disabled={loading}
                         component={Link}
-                        to="/add-client"
+                        to="/clients/add"
                     >
                         Добавить
                     </Button>
@@ -103,14 +103,26 @@ const ClientsPage = () => {
                     <Table size="small">
                         <TableHead>
                             <TableRow>
-                                <TableCell>Наименование</TableCell>
-                                <TableCell>Адрес</TableCell>
+                                <TableCell><strong>Наименование</strong></TableCell>
+                                <TableCell><strong>Адрес</strong></TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {filteredClients.length > 0 ? (
                                 filteredClients.map((client) => (
-                                    <TableRow key={client.id}>
+                                    <TableRow
+                                        key={client.id}
+                                        component={Link}
+                                        to={`/clients/${client.id}`}
+                                        sx={{
+                                            textDecoration: 'none',
+                                            color: 'inherit',
+                                            '&:hover': {
+                                                backgroundColor: 'action.hover',
+                                                cursor: 'pointer',
+                                            }
+                                        }}
+                                    >
                                         <TableCell>{client.name}</TableCell>
                                         <TableCell>{client.address}</TableCell>
                                     </TableRow>

@@ -8,6 +8,7 @@ namespace WarehouseAPI.Services
     {
         protected readonly AppDbContext _context;
         protected readonly ILogger _logger;
+        public IQueryable<T> Query() => _context.Set<T>();
 
         public BaseService(AppDbContext context, ILogger logger)
         {

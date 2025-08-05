@@ -230,39 +230,51 @@ const ShipmentsPage = () => {
                                 <TableCell align="right">Кол-во</TableCell>
                             </TableRow>
                         </TableHead>
-                        <TableBody>
-                            {shipments.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} align="center">
-                                        Нет данных по отгрузкам
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                shipments.map((item, index) => (
-                                    <TableRow key={index}>
-                                        <TableCell>{item.documentNumber}</TableCell>
-                                        <TableCell>{new Date(item.date).toLocaleDateString()}</TableCell>
-                                        <TableCell>{item.clientName}</TableCell>
-                                        <TableCell>
-                                            <Chip
-                                                label={
-                                                    item.status === 'signed' ? 'Подписан' :
-                                                        item.status === 'confirmed' ? 'Подтверждён' : 'Черновик'
-                                                }
-                                                color={
-                                                    item.status === 'signed' ? 'success' :
-                                                        item.status === 'confirmed' ? 'info' : 'default'
-                                                }
-                                                size="small"
-                                            />
+                            <TableBody>
+                                {shipments.length > 0 ? (
+                                    shipments.map((item) => (
+                                        <TableRow
+                                            key={item.id}
+                                            component={Link}
+                                            to={`/shipments/${item.id}`}
+                                            sx={{
+                                                textDecoration: 'none',
+                                                color: 'inherit',
+                                                '&:hover': {
+                                                    backgroundColor: 'action.hover',
+                                                    cursor: 'pointer',
+                                                },
+                                            }}
+                                        >
+                                            <TableCell>{item.documentNumber}</TableCell>
+                                            <TableCell>{new Date(item.date).toLocaleDateString()}</TableCell>
+                                            <TableCell>{item.clientName}</TableCell>
+                                            <TableCell>
+                                                <Chip
+                                                    label={
+                                                        item.status === 'signed' ? 'Подписан' :
+                                                            item.status === 'confirmed' ? 'Подтверждён' : 'Черновик'
+                                                    }
+                                                    color={
+                                                        item.status === 'signed' ? 'success' :
+                                                            item.status === 'confirmed' ? 'info' : 'default'
+                                                    }
+                                                    size="small"
+                                                />
+                                            </TableCell>
+                                            <TableCell>{item.resourceName}</TableCell>
+                                            <TableCell>{item.unitName}</TableCell>
+                                            <TableCell align="right">{item.quantity}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={7} align="center">
+                                            Нет данных по отгрузкам
                                         </TableCell>
-                                        <TableCell>{item.resourceName}</TableCell>
-                                        <TableCell>{item.unitName}</TableCell>
-                                        <TableCell align="right">{item.quantity}</TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
+                                )}
+                            </TableBody>
                     </Table>
                 </TableContainer>
             )}

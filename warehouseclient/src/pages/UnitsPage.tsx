@@ -66,7 +66,7 @@ const UnitsPage = () => {
                         color="success"
                         disabled={loading}
                         component={Link}
-                        to="/add-unit"
+                        to="/units/add"
                     >
                         Добавить
                     </Button>
@@ -102,13 +102,25 @@ const UnitsPage = () => {
                     <Table size="small">
                         <TableHead>
                             <TableRow>
-                                <TableCell>Наименование</TableCell>
+                                <TableCell><strong>Наименование</strong></TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {filteredUnits.length > 0 ? (
                                 filteredUnits.map((unit) => (
-                                    <TableRow key={unit.id}>
+                                    <TableRow
+                                        key={unit.id}
+                                        component={Link}
+                                        to={`/units/${unit.id}`}
+                                        sx={{
+                                            textDecoration: 'none',
+                                            color: 'inherit',
+                                            '&:hover': {
+                                                backgroundColor: 'action.hover',
+                                                cursor: 'pointer',
+                                            }
+                                        }}
+                                    >
                                         <TableCell>{unit.name}</TableCell>
                                     </TableRow>
                                 ))

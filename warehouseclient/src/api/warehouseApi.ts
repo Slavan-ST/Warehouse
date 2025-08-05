@@ -108,6 +108,16 @@ export interface ShipmentItem {
     quantity: number;
 }
 
+
+// Interface for UnitOfMeasure
+export interface UnitOfMeasure {
+    id: number;
+    name: string;
+    status?: number;
+}
+
+
+
 export const getReceipts = async (
     fromDate?: Date | null,
     toDate?: Date | null,
@@ -177,12 +187,6 @@ export const getBalances = async (resourceIds?: number[], unitIds?: number[]): P
 export const getResources = async (): Promise<Resource[]> => {
     const response = await api.get<ApiResponse<Resource>>('/Warehouse/resources');
     return response.data.$values;
-};
-
-export const getUnits = async (): Promise<Unit[]> => {
-    const response = await api.get<ApiResponse<Unit>>('/Receipts/units');
-    return response.data.$values;
-
 };
 
 export const getShipments = async (
@@ -326,5 +330,76 @@ export const archiveResource = async (id: number): Promise<void> => {
         await api.delete(`/Resources/${id}`);
     } catch (error) {
         throw new Error('Не удалось архивировать ресурс');
+    }
+};
+
+// Method to get all units
+export const getUnits = async (): Promise<UnitOfMeasure[]> => {
+    const response = await api.get<ApiResponse<UnitOfMeasure>>('/UnitsOfMeasure');
+    return response.data.$values;
+};
+
+// Method to get a unit by ID
+export const getUnitById = async (id: number): Promise<UnitOfMeasure> => {
+    const response = await api.get<UnitOfMeasure>(`/UnitsOfMeasure/${id}`);
+    return response.data;
+};
+
+// Method to create a new unit
+export const createUnit = async (name: string): Promise<void> => {
+    await api.post('/UnitsOfMeasure', { name });
+};
+
+// Method to update a unit
+export const updateUnit = async (id: number, name: string): Promise<void> => {
+    await api.put(`/UnitsOfMeasure/${id}`, { id, name });
+};
+
+// Method to archive a unit
+export const archiveUnit = async (id: number): Promise<void> => {
+    await api.delete(`/UnitsOfMeasure/${id}`);
+};
+
+// Method to get a receipt by ID
+export const getReceiptById = async (id: number): Promise<ReceiptDocument> => {
+    const response = await api.get<ReceiptDocument>(`/Receipts/${id}`);
+    return response.data;
+};
+
+// Method to update a receipt
+export const updateReceipt = async (id: number, receipt: Partial<ReceiptDocument>): Promise<void> => {
+    await api.put(`/Receipts/${id}`, receipt);
+};
+
+// Method to archive a receipt
+export const archiveReceipt = async (id: number): Promise<void> => {
+    await api.delete(`/Receipts/${id}`);
+};
+
+// Method to get a shipment by ID
+export const getShipmentById = async (id: number): Promise<ShipmentDocument> => {
+    try {
+        const response = await api.get<ShipmentDocument>(`/Shipments/${id}`);
+        return response.data;
+    } catch (error) {
+        throw new Error('Не удалось получить отгрузку');
+    }
+};
+
+// Method to update a shipment
+export const updateShipment = async (id: number, shipment: Partial<ShipmentDocument>): Promise<void> => {
+    try {
+        await api.put(`/Shipments/${id}`, shipment);
+    } catch (error) {
+        throw new Error('Не удалось обновить отгрузку');
+    }
+};
+
+// Method to archive a shipment
+export const archiveShipment = async (id: number): Promise<void> => {
+    try {
+        await api.delete(`/Shipments/${id}`);
+    } catch (error) {
+        throw new Error('Не удалось архивировать отгрузку');
     }
 };

@@ -292,25 +292,37 @@ const IncomesPage = () => {
                                 <TableCell align="right">Количество</TableCell>
                             </TableRow>
                         </TableHead>
-                        <TableBody>
-                            {receipts.length > 0 ? (
+                            <TableBody>
+                                {receipts.length > 0 ? (
                                     receipts.map((item) => (
-                                        <TableRow key={item.id}>
+                                        <TableRow
+                                            key={item.id}
+                                            component={Link}
+                                            to={`/receipts/${item.id}`}
+                                            sx={{
+                                                textDecoration: 'none',
+                                                color: 'inherit',
+                                                '&:hover': {
+                                                    backgroundColor: 'action.hover',
+                                                    cursor: 'pointer',
+                                                },
+                                            }}
+                                        >
                                             <TableCell>{item.documentNumber}</TableCell>
                                             <TableCell>{format(new Date(item.date), 'dd.MM.yyyy')}</TableCell>
                                             <TableCell>{item.resourceName}</TableCell>
                                             <TableCell>{item.unitName}</TableCell>
                                             <TableCell align="right">{item.quantity}</TableCell>
                                         </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={5} align="center">
-                                        Нет данных
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={5} align="center">
+                                            Нет данных
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
                     </Table>
                 </TableContainer>
             )}

@@ -66,7 +66,7 @@ const ResourcesPage = () => {
                         color="success"
                         disabled={loading}
                         component={Link}
-                        to="/add-resource"
+                        to="/resources/add"
                     >
                         Добавить
                     </Button>
@@ -102,19 +102,31 @@ const ResourcesPage = () => {
                     <Table size="small">
                         <TableHead>
                             <TableRow>
-                                <TableCell>Наименование</TableCell>
+                                <TableCell><strong>Наименование</strong></TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {filteredResources.length > 0 ? (
                                 filteredResources.map((resource) => (
-                                    <TableRow key={resource.id}>
+                                    <TableRow
+                                        key={resource.id}
+                                        component={Link}
+                                        to={`/resources/${resource.id}`}
+                                        sx={{
+                                            textDecoration: 'none',
+                                            color: 'inherit',
+                                            '&:hover': {
+                                                backgroundColor: 'action.hover',
+                                                cursor: 'pointer',
+                                            }
+                                        }}
+                                    >
                                         <TableCell>{resource.name}</TableCell>
                                     </TableRow>
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell align="center">
+                                    <TableCell align="center" colSpan={1}>
                                         {view === 'active'
                                             ? 'Нет активных ресурсов'
                                             : 'Нет ресурсов в архиве'}
