@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using WarehouseAPI.Models.Enums;
+using WarehouseAPI.Models;
 using WarehouseAPI.Services;
 
 namespace WarehouseAPI.Controllers
@@ -81,6 +83,47 @@ namespace WarehouseAPI.Controllers
         {
             var numbers = await _receiptService.GetDocumentNumbersAsync();
             return Ok(numbers);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetReceipt(int id)
+        {
+            var result = await _receiptService.GetReceiptByIdAsync(id);
+
+            if (result.IsSuccess)
+                return Ok(result.Value);
+
+            return NotFound(new { message = result.Error });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateReceipt([FromBody] ReceiptDocument receipt)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var result = await _receiptService.CreateReceiptWithResourcesAsync(
+                    receipt.Number,
+                    receipt.Date,
+                    receipt.ReceiptResources?.ToList() ?? new List<ReceiptResource>()
+                );
+
+                if (result.IsSuccess)
+                {
+                    return CreatedAtAction(nameof(GetReceipt), new { id = result.Value.Id }, result.Value);
+                }
+                else
+                {
+                    return BadRequest(new { message = result.Error });
+                }
+            }
+            catch (Exception ex)
+            {
+                // На случай неожиданных ошибок (например, DB)
+                return StatusCode(500, new { message = "Произошла ошибка при сохранении поступления." });
+            }
         }
     }
 }

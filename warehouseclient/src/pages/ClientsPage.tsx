@@ -1,5 +1,4 @@
-﻿// src/pages/ClientsPage.tsx
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import {
     Typography,
     Table,
@@ -23,14 +22,13 @@ const ClientsPage = () => {
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [view, setView] = useState<'active' | 'archive'>('active'); // Режим отображения
 
-    // Загрузка данных
     useEffect(() => {
         const loadClients = async () => {
             try {
                 setLoading(true);
                 setError(null);
-
                 const response = await getClients();
                 setClients(response);
             } catch (err) {
@@ -40,14 +38,26 @@ const ClientsPage = () => {
                 setLoading(false);
             }
         };
-
         loadClients();
     }, []);
+
+    // Фильтрация по статусу: 0 = активный, 1 = архив
+    const filteredClients = clients.filter(client => {
+        const status = client.status ?? 0;
+        return view === 'active' ? status === 0 : status === 1;
+    });
+
+    const handleArchiveClick = () => {
+        setView('archive');
+    };
+
+    const handleActiveClick = () => {
+        setView('active');
+    };
 
     return (
         <Box sx={{ p: 3 }}>
             <Typography variant="h4" gutterBottom>Клиенты</Typography>
-
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
             <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -63,8 +73,23 @@ const ClientsPage = () => {
                     </Button>
                 </Grid>
                 <Grid item>
-                    <Button variant="contained" color="warning">
+                    <Button
+                        variant={view === 'active' ? 'outlined' : 'contained'}
+                        color="warning"
+                        onClick={handleArchiveClick}
+                        disabled={loading}
+                    >
                         К архиву
+                    </Button>
+                </Grid>
+                <Grid item>
+                    <Button
+                        variant={view === 'active' ? 'contained' : 'outlined'}
+                        color="primary"
+                        onClick={handleActiveClick}
+                        disabled={loading}
+                    >
+                        Активные
                     </Button>
                 </Grid>
             </Grid>
@@ -83,19 +108,21 @@ const ClientsPage = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {clients.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={2} align="center">
-                                        Нет данных по клиентам
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                clients.map((client, index) => (
-                                    <TableRow key={index}>
+                            {filteredClients.length > 0 ? (
+                                filteredClients.map((client) => (
+                                    <TableRow key={client.id}>
                                         <TableCell>{client.name}</TableCell>
                                         <TableCell>{client.address}</TableCell>
                                     </TableRow>
                                 ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={2} align="center">
+                                        {view === 'active'
+                                            ? 'Нет активных клиентов'
+                                            : 'Нет клиентов в архиве'}
+                                    </TableCell>
+                                </TableRow>
                             )}
                         </TableBody>
                     </Table>

@@ -1,5 +1,4 @@
-﻿// src/pages/ResourcesPage.tsx
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import {
     Typography,
     Table,
@@ -23,14 +22,13 @@ const ResourcesPage = () => {
     const [resources, setResources] = useState<Resource[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [view, setView] = useState<'active' | 'archive'>('active');
 
-    // Загрузка данных
     useEffect(() => {
         const loadResources = async () => {
             try {
                 setLoading(true);
                 setError(null);
-
                 const response = await getResources();
                 setResources(response);
             } catch (err) {
@@ -40,14 +38,25 @@ const ResourcesPage = () => {
                 setLoading(false);
             }
         };
-
         loadResources();
     }, []);
+
+    const filteredResources = resources.filter(resource => {
+        const status = resource.status ?? 0;
+        return view === 'active' ? status === 0 : status === 1;
+    });
+
+    const handleArchiveClick = () => {
+        setView('archive');
+    };
+
+    const handleActiveClick = () => {
+        setView('active');
+    };
 
     return (
         <Box sx={{ p: 3 }}>
             <Typography variant="h4" gutterBottom>Ресурсы</Typography>
-
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
             <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -63,8 +72,23 @@ const ResourcesPage = () => {
                     </Button>
                 </Grid>
                 <Grid item>
-                    <Button variant="contained" color="warning">
+                    <Button
+                        variant={view === 'active' ? 'outlined' : 'contained'}
+                        color="warning"
+                        onClick={handleArchiveClick}
+                        disabled={loading}
+                    >
                         К архиву
+                    </Button>
+                </Grid>
+                <Grid item>
+                    <Button
+                        variant={view === 'active' ? 'contained' : 'outlined'}
+                        color="primary"
+                        onClick={handleActiveClick}
+                        disabled={loading}
+                    >
+                        Активные
                     </Button>
                 </Grid>
             </Grid>
@@ -82,16 +106,20 @@ const ResourcesPage = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {resources.length === 0 ? (
-                                <TableRow>
-                                    <TableCell align="center">Нет данных по ресурсам</TableCell>
-                                </TableRow>
-                            ) : (
-                                resources.map((resource, index) => (
-                                    <TableRow key={index}>
+                            {filteredResources.length > 0 ? (
+                                filteredResources.map((resource) => (
+                                    <TableRow key={resource.id}>
                                         <TableCell>{resource.name}</TableCell>
                                     </TableRow>
                                 ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell align="center">
+                                        {view === 'active'
+                                            ? 'Нет активных ресурсов'
+                                            : 'Нет ресурсов в архиве'}
+                                    </TableCell>
+                                </TableRow>
                             )}
                         </TableBody>
                     </Table>
