@@ -5,11 +5,12 @@ using WarehouseAPI.DTO;
 using WarehouseAPI.Models.Enums;
 using Microsoft.Extensions.Logging;
 using WarehouseAPI.Models;
+using WarehouseAPI.DTO.Requests;
 
 namespace WarehouseAPI.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/clients")]
     public class ClientsController : ControllerBase
     {
         private readonly ClientService _clientService;
@@ -62,17 +63,21 @@ namespace WarehouseAPI.Controllers
 
         // POST: api/clients
         [HttpPost]
-        public async Task<IActionResult> CreateClient([FromBody] Client client)
+        public async Task<IActionResult> CreateClient([FromBody] CreateClientRequest request)
         {
+            // Проверяем модель
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(new { message = "Некорректные данные", errors = ModelState });
 
             try
             {
-                var result = await _clientService.CreateClientAsync(client.Name, client.Address);
+                // Передаем только нужные поля в сервис
+                var result = await _clientService.CreateClientAsync(request.Name, request.Address);
                 if (result.IsSuccess)
+                {
+                    // Возвращаем полный Dto, созданный сервисом
                     return CreatedAtAction(nameof(GetClient), new { id = result.Value.Id }, result.Value);
-
+                }
                 return BadRequest(new { message = result.Error });
             }
             catch (Exception ex)

@@ -5,11 +5,12 @@ using WarehouseAPI.DTO;
 using WarehouseAPI.DTO.Requests;
 using Microsoft.Extensions.Logging;
 using AutoMapper;
+using WarehouseAPI.Models.Enums;
 
 namespace WarehouseAPI.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/shipments")]
     public class ShipmentsController : ControllerBase
     {
         private readonly ShipmentDocumentService _shipmentService;
@@ -178,6 +179,49 @@ namespace WarehouseAPI.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при удалении документа отгрузки с ID {Id}", id);
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
+        }
+
+        // PUT: api/shipments/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateShipment(int id, [FromBody] CreateShipmentDocumentRequest request)
+        {
+            if (id <= 0 || !ModelState.IsValid)
+                return BadRequest("Некорректные данные");
+
+            try
+            {
+                var existingResult = await _shipmentService.GetShipmentByIdAsync(id);
+                if (existingResult.IsFailure)
+                    return NotFound(new { message = "Документ отгрузки не найден" });
+
+                var existing = existingResult.Value;
+
+                // Проверяем, что документ — черновик
+                if (existing.Status != ShipmentDocumentStatus.Draft)
+                    return BadRequest("Обновление возможно только для черновиков");
+
+                // Проверяем уникальность номера (исключая текущий документ)
+                if (await _shipmentService.DocumentNumberExistsAsync(request.Number, id))
+                    return BadRequest("Документ с таким номером уже существует");
+
+                var result = await _shipmentService.UpdateShipmentDocumentAsync(
+                    id,
+                    request.Number,
+                    request.ClientId,
+                    request.Date,
+                    request.Resources
+                );
+
+                if (result.IsSuccess)
+                    return NoContent();
+
+                return BadRequest(new { message = result.Error });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при обновлении документа отгрузки с ID {Id}", id);
                 return StatusCode(500, "Внутренняя ошибка сервера");
             }
         }

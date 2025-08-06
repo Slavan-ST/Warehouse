@@ -37,6 +37,18 @@ namespace WarehouseAPI.Data
             modelBuilder.Entity<ShipmentDocument>()
                 .Property(s => s.Status)
                 .HasConversion<string>();
+            modelBuilder.Entity<Balance>()
+        .Property(b => b.Quantity)
+        .HasPrecision(18, 4); // 18 цифр всего, 4 после запятой
+
+            modelBuilder.Entity<ReceiptResource>()
+                .Property(r => r.Quantity)
+                .HasPrecision(18, 4);
+
+            modelBuilder.Entity<ShipmentResource>()
+                .Property(s => s.Quantity)
+                .HasPrecision(18, 4);
+
         }
     }
 }

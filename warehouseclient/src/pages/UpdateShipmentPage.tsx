@@ -14,25 +14,14 @@ import {
 import { getShipmentById, updateShipment, archiveShipment } from '../api/warehouseApi';
 import { useParams, useNavigate } from 'react-router-dom';
 
-interface Shipment {
-    id: number;
-    number: string;
-    date: string;
-    clientId: number;
-    clientName: string;
-    shipmentResources: {
-        resourceId: number;
-        unitOfMeasureId: number;
-        quantity: number;
-        resourceName: string;
-        unitName: string;
-    }[];
-}
-
 const UpdateShipmentPage = () => {
-    const { id } = useParams<{ id: string }>();
+
+    const { id } = useParams(); // `id` будет string | undefined
+
     const shipmentId = Number(id);
     const navigate = useNavigate();
+
+    const [clients, setClients] = useState<ClientDto[]>([]);
 
     const [formData, setFormData] = useState({
         number: '',
@@ -51,9 +40,29 @@ const UpdateShipmentPage = () => {
     useEffect(() => {
         const fetchShipment = async () => {
             try {
+                // --- ПРОВЕРКА ПАРАМЕТРА URL ---
+                if (!id) {
+                    setError('ID документа не указан в URL');
+                    setLoading(false);
+                    return;
+                }
+
+                // --- ПРЕОБРАЗОВАНИЕ И ВАЛИДАЦИЯ ID ---
+                const shipmentId = Number(id);
+                if (isNaN(shipmentId) || shipmentId <= 0) {
+                    setError('Некорректный ID документа');
+                    setLoading(false);
+                    return;
+                }
+
+                // --- ЗАГРУЗКА ДАННЫХ ---
                 setLoading(true);
                 setError(null);
+
+                // Вызов API для получения документа
                 const shipment = await getShipmentById(shipmentId);
+
+                // Установка данных формы
                 setFormData({
                     number: shipment.number,
                     date: shipment.date,
@@ -66,13 +75,21 @@ const UpdateShipmentPage = () => {
                 });
             } catch (err) {
                 console.error('Ошибка получения отгрузки:', err);
-                setError('Не удалось загрузить данные отгрузки');
+                // Определяем сообщение об ошибке
+                if (err instanceof Error) {
+                    setError(err.message);
+                } else {
+                    setError('Не удалось загрузить данные отгрузки');
+                }
             } finally {
+                // Обязательно снимаем индикатор загрузки
                 setLoading(false);
             }
         };
+
+        // Запускаем загрузку
         fetchShipment();
-    }, [shipmentId]);
+    }, [id]);
 
     const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, number: e.target.value });
@@ -91,18 +108,28 @@ const UpdateShipmentPage = () => {
             setLoading(true);
             setError(null);
 
-            // Validate form data
-            if (!formData.number || !formData.date || formData.clientId <= 0) {
-                setError('Поля "Номер", "Дата" и "Клиент" не могут быть пустыми');
+            // --- ВАЛИДАЦИЯ ---
+            if (!formData.number || !formData.date) {
+                setError('Поля "Номер" и "Дата" не могут быть пустыми');
+                return;
+            }
+            if (isNaN(formData.clientId) || formData.clientId <= 0) {
+                setError('Пожалуйста, выберите корректного клиента');
                 return;
             }
 
-            // Send PUT request to update the shipment
-            await updateShipment(shipmentId, formData);
+            // --- ПОДГОТОВКА ЗАПРОСА ---
+            const request = {
+                number: formData.number,
+                date: formData.date,
+                clientId: formData.clientId,
+                resources: formData.shipmentResources // Ключевое изменение!
+            };
 
-            // Show success message
+            // --- ОТПРАВКА ЗАПРОСА ---
+            await updateShipment(shipmentId, request);
+
             alert('Отгрузка успешно обновлена!');
-            setFormData({ ...formData }); // Refresh form data
         } catch (err) {
             console.error('Ошибка обновления отгрузки:', err);
             setError('Ошибка при обновлении отгрузки');
@@ -112,25 +139,24 @@ const UpdateShipmentPage = () => {
     };
 
     const handleArchive = async () => {
+        if (!window.confirm('Вы уверены, что хотите отозвать эту отгрузку?')) return;
+
         try {
             setLoading(true);
             setError(null);
-
-            // Send DELETE request to archive the shipment
             await archiveShipment(shipmentId);
-
-            // Show success message
-            alert('Отгрузка успешно архивирована!');
-            navigate('/shipments'); // Redirect to shipments list
+            alert('Отгрузка успешно отозвана!');
+            navigate('/shipments');
         } catch (err) {
-            console.error('Ошибка архивации отгрузки:', err);
-            setError('Ошибка при архивации отгрузки');
+            console.error('Ошибка отзыва отгрузки:', err);
+            setError('Ошибка при отзыве отгрузки');
         } finally {
             setLoading(false);
         }
     };
 
-    if (!formData || loading) {
+    // --- УБРАНО !formData ---
+    if (loading) {
         return <div>Загрузка...</div>;
     }
 
@@ -140,7 +166,6 @@ const UpdateShipmentPage = () => {
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
             <Box sx={{ mt: 2 }}>
-                {/* Кнопка отзыва */}
                 <Button
                     variant="contained"
                     color="error"
@@ -151,46 +176,38 @@ const UpdateShipmentPage = () => {
                     Отозвать
                 </Button>
 
-                {/* Поле для номера */}
                 <TextField
                     label="Номер"
                     value={formData.number}
                     onChange={handleNumberChange}
                     fullWidth
                     sx={{ mb: 2 }}
-                    helperText={error && error}
-                    error={!!error}
                 />
-                {/* Поле для даты */}
                 <TextField
                     label="Дата"
                     type="date"
-                    value={formData.date}
+                    value={formData.date.split('T')[0]} // Очистка времени
                     onChange={handleDateChange}
                     fullWidth
                     sx={{ mb: 2 }}
-                    helperText={error && error}
-                    error={!!error}
                 />
-                {/* Поле для клиента */}
                 <TextField
-                    label="Клиент"
-                    value={formData.clientId.toString()}
+                    label="ID Клиента (для теста)"
+                    type="number"
+                    value={formData.clientId || ''}
                     onChange={handleClientIdChange}
                     fullWidth
                     sx={{ mb: 2 }}
-                    helperText={error && error}
-                    error={!!error}
+                    helperText="Введите ID существующего клиента"
                 />
             </Box>
 
-            {/* Таблица с ресурсами */}
             <Table size="small">
                 <TableHead>
                     <TableRow>
                         <TableCell>Ресурс</TableCell>
-                        <TableCell>Единица измерения</TableCell>
-                        <TableCell align="right">Количество</TableCell>
+                        <TableCell>Ед. изм.</TableCell>
+                        <TableCell align="right">Кол-во</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
@@ -204,14 +221,12 @@ const UpdateShipmentPage = () => {
                 </TableBody>
             </Table>
 
-            {/* Buttons */}
             <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
                 <Button
                     variant="contained"
                     color="success"
                     onClick={handleSave}
-                    disabled={!formData.number || !formData.date || formData.clientId <= 0 || loading}
-                    sx={{ mr: 2 }}
+                    disabled={loading}
                 >
                     {loading ? 'Обновление...' : 'Сохранить'}
                 </Button>

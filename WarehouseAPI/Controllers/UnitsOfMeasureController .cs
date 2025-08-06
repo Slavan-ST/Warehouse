@@ -7,11 +7,12 @@ using Microsoft.Extensions.Logging;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using WarehouseAPI.Models;
+using WarehouseAPI.DTO.Requests;
 
 namespace WarehouseAPI.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/units")]
     public class UnitsOfMeasureController : ControllerBase
     {
         private readonly UnitOfMeasureService _unitService;
@@ -79,20 +80,21 @@ namespace WarehouseAPI.Controllers
 
         // POST: api/units
         [HttpPost]
-        public async Task<IActionResult> CreateUnit([FromBody] UnitOfMeasure unit)
+        public async Task<IActionResult> CreateUnit([FromBody] CreateUnitOfMeasureRequest request)
         {
+            // Проверяем модель
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(new { message = "Некорректные данные", errors = ModelState });
 
             try
             {
-                var result = await _unitService.CreateUnitAsync(unit.Name);
+                // Передаем только нужное поле в сервис
+                var result = await _unitService.CreateUnitAsync(request.Name);
                 if (result.IsSuccess)
                 {
                     var dto = _mapper.Map<UnitOfMeasureDto>(result.Value);
                     return CreatedAtAction(nameof(GetUnit), new { id = dto.Id }, dto);
                 }
-
                 return BadRequest(new { message = result.Error });
             }
             catch (Exception ex)

@@ -5,11 +5,12 @@ using WarehouseAPI.DTO;
 using Microsoft.Extensions.Logging;
 using AutoMapper;
 using WarehouseAPI.Models;
+using WarehouseAPI.DTO.Requests;
 
 namespace WarehouseAPI.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/resources")]
     public class ResourcesController : ControllerBase
     {
         private readonly ResourceService _resourceService;
@@ -68,27 +69,21 @@ namespace WarehouseAPI.Controllers
 
         // POST: api/resources
         [HttpPost]
-        public async Task<IActionResult> CreateResource([FromBody] Resource resource)
+        [HttpPost]
+        public async Task<IActionResult> CreateResource([FromBody] CreateResourceRequest request)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            try
             {
-                var result = await _resourceService.CreateResourceAsync(resource.Name);
-                if (result.IsSuccess)
-                {
-                    var dto = _mapper.Map<ResourceDto>(result.Value);
-                    return CreatedAtAction(nameof(GetResource), new { id = dto.Id }, dto);
-                }
+                return BadRequest(new { message = "Некорректные данные", errors = ModelState });
+            }
 
-                return BadRequest(new { message = result.Error });
-            }
-            catch (Exception ex)
+            var result = await _resourceService.CreateResourceAsync(request);
+            if (result.IsSuccess)
             {
-                _logger.LogError(ex, "Ошибка при создании ресурса");
-                return StatusCode(500, "Внутренняя ошибка сервера");
+                return Ok(result.Value); // Assuming you return the created resource
             }
+
+            return BadRequest(new { message = result.Error });
         }
 
         // PUT: api/resources/5

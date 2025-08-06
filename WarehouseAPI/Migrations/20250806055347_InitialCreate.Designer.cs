@@ -12,7 +12,7 @@ using WarehouseAPI.Data;
 namespace WarehouseAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250801153949_InitialCreate")]
+    [Migration("20250806055347_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -92,6 +92,9 @@ namespace WarehouseAPI.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 

@@ -279,5 +279,85 @@ namespace WarehouseAPI.Services
                 return new List<ShipmentDocument>();
             }
         }
+
+        public async Task<bool> DocumentNumberExistsAsync(string number, int excludeId = 0)
+        {
+            return await _context.ShipmentDocuments
+                .AnyAsync(sd => sd.Number == number && sd.Id != excludeId);
+        }
+
+        public async Task<Result> UpdateShipmentDocumentAsync(
+    int id,
+    string number,
+    int clientId,
+    DateTime date,
+    List<CreateShipmentResourceRequest> resources)
+        {
+            if (string.IsNullOrWhiteSpace(number))
+                return Result.Failure("Номер документа не может быть пустым");
+
+            if (resources == null || !resources.Any())
+                return Result.Failure("Документ отгрузки должен содержать хотя бы один ресурс");
+
+            var document = await _context.ShipmentDocuments
+                .Include(sd => sd.ShipmentResources)
+                .FirstOrDefaultAsync(sd => sd.Id == id);
+
+            if (document == null)
+                return Result.Failure("Документ не найден");
+
+            // Проверка клиента
+            var client = await _context.Clients.FindAsync(clientId);
+            if (client?.Status != EntityStatus.Active)
+                return Result.Failure("Клиент не найден или архивирован");
+
+            // Валидация ресурсов и единиц измерения
+            foreach (var sr in resources)
+            {
+                var resource = await _context.Resources.FindAsync(sr.ResourceId);
+                var unit = await _context.UnitsOfMeasure.FindAsync(sr.UnitOfMeasureId);
+
+                if (resource?.Status != EntityStatus.Active)
+                    return Result.Failure($"Ресурс с ID {sr.ResourceId} не найден или архивирован");
+
+                if (unit?.Status != EntityStatus.Active)
+                    return Result.Failure($"Единица измерения с ID {sr.UnitOfMeasureId} не найдена или архивирована");
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Обновляем заголовок
+                document.Number = number;
+                document.ClientId = clientId;
+                document.Date = date;
+
+                // Удаляем старые ресурсы
+                _context.ShipmentResources.RemoveRange(document.ShipmentResources);
+                await _context.SaveChangesAsync();
+
+                // Добавляем новые
+                document.ShipmentResources = resources.Select(r => new ShipmentResource
+                {
+                    ShipmentDocumentId = document.Id,
+                    ResourceId = r.ResourceId,
+                    UnitOfMeasureId = r.UnitOfMeasureId,
+                    Quantity = r.Quantity
+                }).ToList();
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Документ отгрузки с ID {DocumentId} обновлён", id);
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Ошибка при обновлении документа отгрузки с ID {DocumentId}", id);
+                return Result.Failure("Не удалось обновить документ отгрузки");
+            }
+        }
     }
 }

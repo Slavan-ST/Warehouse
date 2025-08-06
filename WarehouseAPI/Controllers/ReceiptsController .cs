@@ -6,11 +6,12 @@ using WarehouseAPI.DTO.Requests;
 using Microsoft.Extensions.Logging;
 using AutoMapper;
 using WarehouseAPI.Models;
+using WarehouseAPI.Models.Enums;
 
 namespace WarehouseAPI.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/receipts")]
     public class ReceiptsController : ControllerBase
     {
         private readonly ReceiptDocumentService _receiptService;
@@ -149,5 +150,38 @@ namespace WarehouseAPI.Controllers
                 return StatusCode(500, "Внутренняя ошибка сервера");
             }
         }
+
+
+
+        // PUT: api/receipts/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateReceipt(int id, [FromBody] CreateReceiptDocumentRequest request)
+        {
+            if (id <= 0 || !ModelState.IsValid)
+                return BadRequest("Некорректные данные");
+
+            try
+            {
+                var result = await _receiptService.UpdateReceiptDocumentAsync(
+                    id,
+                    request.Number,
+                    request.Date,
+                    request.Resources
+                );
+
+                if (result.IsSuccess)
+                    return NoContent(); // или Ok(result.Value), если хочешь вернуть обновлённый объект
+
+                return BadRequest(new { message = result.Error });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при обновлении документа поступления с ID {Id}", id);
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
+        }
     }
+
+
+
 }

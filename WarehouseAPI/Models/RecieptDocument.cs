@@ -1,4 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿// Models/ReceiptDocument.cs
+using System.ComponentModel.DataAnnotations;
+using WarehouseAPI.Models.Enums;
 
 namespace WarehouseAPI.Models
 {
@@ -13,6 +15,9 @@ namespace WarehouseAPI.Models
 
         [Required]
         public DateTime Date { get; set; }
+
+        [Required]
+        public EntityStatus Status { get; set; } = EntityStatus.Active;
 
         public ICollection<ReceiptResource> ReceiptResources { get; set; }
     }

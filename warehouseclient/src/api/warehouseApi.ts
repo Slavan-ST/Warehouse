@@ -1,98 +1,124 @@
+﻿// src/api/warehouseApi.ts
 // src/api/warehouseApi.ts
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:5130/api/'
+    baseURL: 'http://localhost:5130/api/',
+    headers: {
+        'Content-Type': 'application/json',
+    },
 });
 
-export interface ApiResponse<T> {
-    $id: string;
-    $values: T[];
+// --- DTO ---
+export interface ResourceDto {
+    id: number;
+    name: string;
+    status: number; // EntityStatus
 }
 
-export interface BalanceItem {
+export interface UnitOfMeasureDto {
+    id: number;
+    name: string;
+    status: number;
+}
+
+export interface ClientDto {
+    id: number;
+    name: string;
+    address: string;
+    status: number;
+}
+
+export interface BalanceDto {
     id: number;
     resourceId: number;
+    resourceName: string;
     unitOfMeasureId: number;
+    unitName: string;
     quantity: number;
 }
 
-export interface Resource {
+export interface ReceiptResourceDto {
     id: number;
-    name: string;
-    status?: number;
-    balances?: any;
-    receiptResources?: any;
-    shipmentResources?: any;
+    receiptDocumentId: number;
+    resourceId: number;
+    resourceName: string;
+    unitOfMeasureId: number;
+    unitName: string;
+    quantity: number;
 }
 
-export interface Unit {
+export interface ReceiptDocumentDto {
     id: number;
-    name: string;
-    status?: number;
-    balances?: any;
-    receiptResources?: any;
-    shipmentResources?: any;
+    number: string;
+    date: string; // ISO
+    receiptResources: ReceiptResourceDto[];
 }
-export interface ReceiptDocument {
-    $id: string;
+
+export interface ShipmentResourceDto {
+    id: number;
+    shipmentDocumentId: number;
+    resourceId: number;
+    resourceName: string;
+    unitOfMeasureId: number;
+    unitName: string;
+    quantity: number;
+}
+
+export interface ShipmentDocumentDto {
     id: number;
     number: string;
     date: string;
-    receiptResources: ApiResponse<ReceiptResource>;
+    status: number; // ShipmentDocumentStatus
+    client: ClientDto;
+    shipmentResources: ShipmentResourceDto[];
 }
 
-export interface ReceiptResource {
-    $id: string;
-    id: number;
-    receiptDocumentId: number;
-    receiptDocument: { $ref: string };
-    resourceId: number;
-    unitOfMeasureId: number;
-    quantity: number;
-    resourceName?: string; // ����� ��������� �� �������
-    unitName?: string;     // ����� ��������� �� �������
+// --- Формы ---
+export interface CreateResourceRequest {
+    name: string;
 }
 
+export interface CreateUnitOfMeasureRequest {
+    name: string;
+}
+
+export interface CreateClientRequest {
+    name: string;
+    address: string;
+}
+
+export interface CreateReceiptDocumentRequest {
+    number: string;
+    date: string;
+    resources: {
+        resourceId: number;
+        unitOfMeasureId: number;
+        quantity: number;
+    }[];
+}
+
+export interface CreateShipmentDocumentRequest {
+    number: string;
+    date: string;
+    clientId: number;
+    resources: {
+        resourceId: number;
+        unitOfMeasureId: number;
+        quantity: number;
+    }[];
+}
+
+// --- Плоские представления для таблиц ---
 export interface ReceiptItem {
     documentId: number;
     documentNumber: string;
     date: string;
     resourceId: number;
     unitId: number;
-    quantity: number;
     resourceName: string;
     unitName: string;
-}
-export interface ShipmentDocument {
-    $id: string;
-    id: number;
-    number: string;
-    clientId: number;
-    client: Client | { $ref: string };
-    date: string; // ISO date
-    status: number; // 0 = ��������, 1 = ����������, 2 = ��������
-    shipmentResources?: ApiResponse<ShipmentResource>;
-}
-
-export interface Client {
-    $id: string;
-    id: number;
-    name: string;
-    address: string;
-    status: number;
-    shipmentDocuments: ApiResponse<ShipmentDocument>;
-}
-
-export interface ShipmentResource {
-    $id: string;
-    id: number;
-    shipmentDocumentId: number;
-    resourceId: number;
-    unitOfMeasureId: number;
     quantity: number;
-    resource?: Resource;
-    unitOfMeasure?: Unit;
 }
 
 export interface ShipmentItem {
@@ -100,7 +126,7 @@ export interface ShipmentItem {
     documentNumber: string;
     date: string;
     clientName: string;
-    status: 'draft' | 'confirmed' | 'signed';
+    status: 'draft' | 'signed' | 'revoked';
     resourceId: number;
     unitId: number;
     resourceName: string;
@@ -109,12 +135,154 @@ export interface ShipmentItem {
 }
 
 
-// Interface for UnitOfMeasure
-export interface UnitOfMeasure {
-    id: number;
-    name: string;
-    status?: number;
-}
+
+
+// Получить все активные ресурсы
+export const getResources = async (): Promise<ResourceDto[]> => {
+    try {
+        const response = await api.get<ResourceDto[]>('/resources');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching resources:', error);
+        throw new Error('Не удалось загрузить ресурсы');
+    }
+};
+
+// Получить все активные единицы измерения
+export const getUnits = async (): Promise<UnitOfMeasureDto[]> => {
+    try {
+        const response = await api.get<UnitOfMeasureDto[]>('/units');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching units:', error);
+        throw new Error('Не удалось загрузить единицы измерения');
+    }
+};
+
+// Получить всех активных клиентов
+export const getClients = async (): Promise<ClientDto[]> => {
+    try {
+        const response = await api.get<ClientDto[]>('/clients');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching clients:', error);
+        throw new Error('Не удалось загрузить клиентов');
+    }
+};
+
+export const getClientById = async (id: number): Promise<ClientDto> => {
+    if (id <= 0) {
+        throw new Error('Некорректный ID клиента');
+    }
+
+    try {
+        const response = await api.get<ClientDto>(`/clients/${id}`);
+        return response.data;
+    } catch (error) {
+        if (error instanceof AxiosError) {
+            if (error.response?.status === 404) {
+                throw new Error('Клиент не найден');
+            } else if (error.response?.status === 400) {
+                throw new Error('Некорректный запрос: неверный формат ID');
+            }
+        }
+        console.error('Error fetching client by ID:', error);
+        throw new Error('Не удалось загрузить данные клиента');
+    }
+};
+
+
+export const createResource = async (name: string): Promise<ResourceDto> => {
+    try {
+        const response = await api.post<ResourceDto>('/resources', { name });
+        return response.data;
+    } catch (error) {
+        if (error instanceof AxiosError && error.response?.status === 400) {
+            throw new Error(error.response.data.message || 'Некорректные данные');
+        }
+        throw new Error('Не удалось создать ресурс');
+    }
+};
+
+export const updateResource = async (id: number, name: string): Promise<void> => {
+    try {
+        await api.put(`/resources/${id}`, { id, name });
+    } catch (error) {
+        throw new Error('Не удалось обновить ресурс');
+    }
+};
+
+export const archiveResource = async (id: number): Promise<void> => {
+    try {
+        await api.delete(`/resources/${id}`);
+    } catch (error) {
+        throw new Error('Не удалось архивировать ресурс');
+    }
+};
+
+
+
+
+
+
+export const createUnit = async (name: string): Promise<UnitOfMeasureDto> => {
+    try {
+        const response = await api.post<UnitOfMeasureDto>('/units', { name });
+        return response.data;
+    } catch (error) {
+        throw new Error('Не удалось создать единицу измерения');
+    }
+};
+
+export const updateUnit = async (id: number, name: string): Promise<void> => {
+    try {
+        await api.put(`/units/${id}`, { id, name });
+    } catch (error) {
+        throw new Error('Не удалось обновить единицу измерения');
+    }
+};
+
+export const archiveUnit = async (id: number): Promise<void> => {
+    try {
+        await api.delete(`/units/${id}`);
+    } catch (error) {
+        throw new Error('Не удалось архивировать единицу измерения');
+    }
+};
+
+
+
+
+
+
+
+export const createClient = async (name: string, address: string): Promise<ClientDto> => {
+    try {
+        const response = await api.post<ClientDto>('/clients', { name, address });
+        return response.data;
+    } catch (error) {
+        throw new Error('Не удалось создать клиента');
+    }
+};
+
+export const updateClient = async (id: number, name: string, address: string): Promise<void> => {
+    try {
+        await api.put(`/clients/${id}`, { id, name, address });
+    } catch (error) {
+        throw new Error('Не удалось обновить клиента');
+    }
+};
+
+export const archiveClient = async (id: number): Promise<void> => {
+    try {
+        await api.delete(`/clients/${id}`);
+    } catch (error) {
+        throw new Error('Не удалось архивировать клиента');
+    }
+};
+
+
+
 
 
 
@@ -125,281 +293,390 @@ export const getReceipts = async (
     resourceIds?: number[],
     unitIds?: number[]
 ): Promise<ReceiptItem[]> => {
-    const params = new URLSearchParams();
-
-    if (fromDate) params.append('fromDate', fromDate.toISOString());
-    if (toDate) params.append('toDate', toDate.toISOString());
-    if (documentNumbers) documentNumbers.forEach(num => params.append('documentNumbers', num));
-    if (resourceIds) resourceIds.forEach(id => params.append('resourceIds', id.toString()));
-    if (unitIds) unitIds.forEach(id => params.append('unitIds', id.toString()));
-
     try {
-        // �������� ��������� �����������
-        const documentsResponse = await api.get<ApiResponse<ReceiptDocument>>('/Receipts', { params });
-        const documents = documentsResponse.data.$values;
+        const params = new URLSearchParams();
+        if (fromDate) params.append('fromDate', fromDate.toISOString());
+        if (toDate) params.append('toDate', toDate.toISOString());
+        if (documentNumbers) documentNumbers.forEach(num => params.append('documentNumbers', num));
+        if (resourceIds) resourceIds.forEach(id => params.append('resourceIds', id.toString()));
+        if (unitIds) unitIds.forEach(id => params.append('unitIds', id.toString()));
 
-        // �������� ����������� ��� ���. ����������
-        const [resources, units] = await Promise.all([
-            getResources(),
-            getUnits()
-        ]);
+        const response = await api.get<ReceiptDocumentDto[]>('/receipts', { params });
+        const documents = response.data;
 
-        // ����������� ��������� ������ � ������� �������
-        const receiptItems: ReceiptItem[] = [];
+        const [resources, units] = await Promise.all([getResources(), getUnits()]);
 
-        documents.forEach(document => {
-            document.receiptResources.$values.forEach(resource => {
-                receiptItems.push({
-                    documentId: document.id,
-                    documentNumber: document.number,
-                    date: document.date,
-                    resourceId: resource.resourceId,
-                    unitId: resource.unitOfMeasureId,
-                    quantity: resource.quantity,
-                    resourceName: resources.find(r => r.id === resource.resourceId)?.name || '����������',
-                    unitName: units.find(u => u.id === resource.unitOfMeasureId)?.name || '����������'
+        const items: ReceiptItem[] = [];
+        documents.forEach(doc => {
+            doc.receiptResources.forEach(rr => {
+                items.push({
+                    id: doc.id,
+                    documentId: doc.id,
+                    documentNumber: doc.number,
+                    date: doc.date,
+                    resourceId: rr.resourceId,
+                    unitId: rr.unitOfMeasureId,
+                    resourceName: rr.resourceName,
+                    unitName: rr.unitName,
+                    quantity: rr.quantity
                 });
             });
         });
 
-        return receiptItems;
+        return items;
     } catch (error) {
         console.error('Error fetching receipts:', error);
-        throw new Error('�� ������� ��������� ������ �����������');
+        throw new Error('Не удалось загрузить данные поступлений');
     }
 };
 
-export const getBalances = async (resourceIds?: number[], unitIds?: number[]): Promise<BalanceItem[]> => {
-    const params = new URLSearchParams();
-
-    if (resourceIds) {
-        resourceIds.forEach(id => params.append('resourceIds', id.toString()));
+export const createReceipt = async (request: CreateReceiptDocumentRequest): Promise<ReceiptDocumentDto> => {
+    try {
+        const response = await api.post<ReceiptDocumentDto>('/receipts', request);
+        return response.data;
+    } catch (error) {
+        throw new Error('Не удалось создать документ поступления');
     }
-
-    if (unitIds) {
-        unitIds.forEach(id => params.append('unitIds', id.toString()));
-    }
-
-    const response = await api.get<ApiResponse<BalanceItem>>('/Warehouse/balances', { params });
-    return response.data.$values; // ���������� ������ ������ ��������
 };
 
-export const getResources = async (): Promise<Resource[]> => {
-    const response = await api.get<ApiResponse<Resource>>('/Warehouse/resources');
-    return response.data.$values;
+
+export const getReceiptById = async (id: number): Promise<ReceiptDocumentDto> => {
+    if (id <= 0) {
+        throw new Error('Некорректный ID документа поступления');
+    }
+
+    try {
+        const response = await api.get<ReceiptDocumentDto>(`/receipts/${id}`);
+        return response.data;
+    } catch (error) {
+        if (error instanceof AxiosError) {
+            if (error.response?.status === 404) {
+                throw new Error('Документ поступления не найден');
+            }
+        }
+        console.error('Error fetching receipt by ID:', error);
+        throw new Error('Не удалось загрузить документ поступления');
+    }
 };
+
+export const deleteReceipt = async (id: number): Promise<void> => {
+    try {
+        await api.delete(`/receipts/${id}`);
+    } catch (error) {
+        throw new Error('Не удалось удалить документ поступления');
+    }
+};
+
+
+
+
+
+
+
+export const getBalances = async (
+    resourceIds?: number[],
+    unitIds?: number[]
+): Promise<BalanceDto[]> => {
+    try {
+        const params = new URLSearchParams();
+        if (resourceIds) resourceIds.forEach(id => params.append('resourceIds', id.toString()));
+        if (unitIds) unitIds.forEach(id => params.append('unitIds', id.toString()));
+
+        const response = await api.get<BalanceDto[]>('/balance', { params });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching balances:', error);
+        throw new Error('Не удалось загрузить остатки');
+    }
+};
+
+export const getAvailableQuantity = async (resourceId: number, unitId: number): Promise<number> => {
+    try {
+        const response = await api.get<{ resourceId: number; unitId: number; availableQuantity: number }>(
+            `/balance/available`,
+            { params: { resourceId, unitId } }
+        );
+        return response.data.availableQuantity;
+    } catch (error) {
+        console.error('Error fetching available quantity:', error);
+        return 0;
+    }
+};
+
+
+
+
 
 export const getShipments = async (
     fromDate?: Date | null,
     toDate?: Date | null,
-    documentNumber?: string,
-    clientNameFilter?: string,
+    documentNumbers?: string[],
     resourceIds?: number[],
     unitIds?: number[]
 ): Promise<ShipmentItem[]> => {
-    const params = new URLSearchParams();
-
-    if (fromDate) params.append('fromDate', fromDate.toISOString());
-    if (toDate) params.append('toDate', toDate.toISOString());
-    if (documentNumber) params.append('documentNumber', documentNumber);
-    if (clientNameFilter) params.append('clientName', clientNameFilter);
-    if (resourceIds) resourceIds.forEach(id => params.append('resourceIds', id.toString()));
-    if (unitIds) unitIds.forEach(id => params.append('unitIds', id.toString()));
-
     try {
-        const response = await api.get<ApiResponse<ShipmentDocument>>('/Shipments', { params });
-        const documents = response.data.$values;
+        const params = new URLSearchParams();
+        if (fromDate) params.append('fromDate', fromDate.toISOString());
+        if (toDate) params.append('toDate', toDate.toISOString());
+        if (documentNumbers) documentNumbers.forEach(num => params.append('documentNumbers', num));
+        if (resourceIds) resourceIds.forEach(id => params.append('resourceIds', id.toString()));
+        if (unitIds) unitIds.forEach(id => params.append('unitIds', id.toString()));
 
-        // �������� �����������
-        const [resources, units, clients] = await Promise.all([
-            getResources(),
-            getUnits(),
-            getClients(), // ������� ���� ����� ����
-        ]);
+        const response = await api.get<ShipmentDocumentDto[]>('/shipments', { params });
+        const documents = response.data;
 
-        const shipmentItems: ShipmentItem[] = [];
+        const [resources, units] = await Promise.all([getResources(), getUnits()]);
 
+        const items: ShipmentItem[] = [];
         documents.forEach(doc => {
-            // ���������� $ref, ���� client � ��� ������
-            let client: Client | undefined;
-            if ('client' in doc && doc.client && '$ref' in doc.client) {
-                const clientId = doc.clientId;
-                client = clients.find(c => c.id === clientId);
-            } else {
-                client = doc.client as Client;
-            }
-
-            const clientName = client?.name || '����������� ������';
-
-            // ������
-            const statusMap = {
+            const statusMap: Record<number, ShipmentItem['status']> = {
                 0: 'draft',
-                1: 'confirmed',
-                2: 'signed'
+                1: 'signed',
+                2: 'revoked'
             };
-            const status: ShipmentItem['status'] = statusMap[doc.status as 0 | 1 | 2] || 'draft';
+            const status = statusMap[doc.status] || 'draft';
 
-            // ������� � ���������
-            const resourcesInDoc = doc.shipmentResources?.$values || [];
-
-            resourcesInDoc.forEach(resource => {
-                shipmentItems.push({
+            doc.shipmentResources.forEach(sr => {
+                items.push({
+                    id: doc.id,
                     documentId: doc.id,
                     documentNumber: doc.number,
                     date: doc.date,
-                    clientName,
+                    clientName: doc.client.name,
                     status,
-                    resourceId: resource.resourceId,
-                    unitId: resource.unitOfMeasureId,
-                    quantity: resource.quantity,
-                    resourceName: resources.find(r => r.id === resource.resourceId)?.name || '����������',
-                    unitName: units.find(u => u.id === resource.unitOfMeasureId)?.name || '����������'
+                    resourceId: sr.resourceId,
+                    unitId: sr.unitOfMeasureId,
+                    resourceName: sr.resourceName,
+                    unitName: sr.unitName,
+                    quantity: sr.quantity
                 });
             });
         });
 
-        return shipmentItems;
+        return items;
     } catch (error) {
         console.error('Error fetching shipments:', error);
-        throw new Error('�� ������� ��������� ������ ��������');
+        throw new Error('Не удалось загрузить данные отгрузок');
     }
 };
 
-
-// Method to get all active clients
-export const getClients = async (): Promise<Client[]> => {
-    const response = await api.get<ApiResponse<Client>>('/Clients');
-    return response.data.$values;
-};
-
-// Method to get a client by ID
-export const getClientById = async (id: number): Promise<Client> => {
-    const response = await api.get<Client>(`/Clients/${id}`);
-    return response.data;
-};
-
-// Method to create a new client
-export const createClient = async (name: string, address: string): Promise<Client> => {
-    const response = await api.post<Client>('/Clients', { name, address });
-    return response.data;
-};
-
-// Method to update a client
-export const updateClient = async (id: number, name: string, address: string): Promise<void> => {
-    await api.put(`/Clients/${id}`, { name, address });
-};
-
-// Method to archive a client
-export const archiveClient = async (id: number): Promise<void> => {
-    await api.delete(`/Clients/${id}`);
-};
-
-// src/api/warehouseApi.ts
-
-// Function to create a new resource
-export const createResource = async (name: string): Promise<void> => {
+export const createShipment = async (request: CreateShipmentDocumentRequest): Promise<ShipmentDocumentDto> => {
     try {
-        await api.post('/Resources', { name });
-    } catch (error) {
-        throw new Error('�� ������� ������� ������');
-    }
-};
-
-// Function to get a resource by ID
-export const getResourceById = async (id: number): Promise<Resource> => {
-    try {
-        const response = await api.get<Resource>(`/Resources/${id}`);
+        const response = await api.post<ShipmentDocumentDto>('/shipments', request);
         return response.data;
     } catch (error) {
-        throw new Error('�� ������� �������� ������');
+        throw new Error('Не удалось создать документ отгрузки');
     }
 };
 
-// Function to update a resource
-export const updateResource = async (id: number, name: string): Promise<void> => {
+export const signShipment = async (id: number): Promise<void> => {
     try {
-        await api.put(`/Resources/${id}`, { name });
+        await api.post(`/shipments/${id}/sign`);
     } catch (error) {
-        throw new Error('�� ������� �������� ������');
+        throw new Error('Не удалось подписать документ отгрузки');
     }
 };
 
-// Function to archive a resource
-export const archiveResource = async (id: number): Promise<void> => {
+export const revokeShipment = async (id: number): Promise<void> => {
     try {
-        await api.delete(`/Resources/${id}`);
+        await api.post(`/shipments/${id}/revoke`);
     } catch (error) {
-        throw new Error('�� ������� ������������ ������');
+        throw new Error('Не удалось отозвать документ отгрузки');
     }
 };
 
-// Method to get all units
-export const getUnits = async (): Promise<UnitOfMeasure[]> => {
-    const response = await api.get<ApiResponse<UnitOfMeasure>>('/UnitsOfMeasure');
-    return response.data.$values;
+export const deleteShipment = async (id: number): Promise<void> => {
+    try {
+        await api.delete(`/shipments/${id}`);
+    } catch (error) {
+        throw new Error('Не удалось удалить документ отгрузки');
+    }
 };
 
-// Method to get a unit by ID
-export const getUnitById = async (id: number): Promise<UnitOfMeasure> => {
-    const response = await api.get<UnitOfMeasure>(`/UnitsOfMeasure/${id}`);
-    return response.data;
+
+
+export const getResourceById = async (id: number): Promise<ResourceDto> => {
+    if (id <= 0) {
+        throw new Error('Некорректный ID ресурса');
+    }
+
+    try {
+        const response = await api.get<ResourceDto>(`/resources/${id}`);
+        return response.data;
+    } catch (error) {
+        if (error instanceof AxiosError) {
+            if (error.response?.status === 404) {
+                throw new Error('Ресурс не найден');
+            } else if (error.response?.status === 400) {
+                throw new Error('Некорректный запрос: неверный формат ID');
+            }
+        }
+        console.error('Error fetching resource by ID:', error);
+        throw new Error('Не удалось загрузить данные ресурса');
+    }
 };
 
-// Method to create a new unit
-export const createUnit = async (name: string): Promise<void> => {
-    await api.post('/UnitsOfMeasure', { name });
+
+export const getUnitById = async (id: number): Promise<UnitOfMeasureDto> => {
+    if (id <= 0) {
+        throw new Error('Некорректный ID единицы измерения');
+    }
+
+    try {
+        const response = await api.get<UnitOfMeasureDto>(`/units/${id}`);
+        return response.data;
+    } catch (error) {
+        if (error instanceof AxiosError) {
+            if (error.response?.status === 404) {
+                throw new Error('Единица измерения не найдена');
+            } else if (error.response?.status === 400) {
+                throw new Error('Некорректный запрос: неверный формат ID');
+            }
+        }
+        console.error('Error fetching unit by ID:', error);
+        throw new Error('Не удалось загрузить данные единицы измерения');
+    }
 };
 
-// Method to update a unit
-export const updateUnit = async (id: number, name: string): Promise<void> => {
-    await api.put(`/UnitsOfMeasure/${id}`, { id, name });
+
+export const getShipmentById = async (id: number): Promise<ShipmentDocumentDto> => {
+    if (id <= 0) {
+        throw new Error('Некорректный ID документа отгрузки');
+    }
+
+    try {
+        const response = await api.get<ShipmentDocumentDto>(`/shipments/${id}`);
+        return response.data;
+    } catch (error) {
+        if (error instanceof AxiosError) {
+            if (error.response?.status === 404) {
+                throw new Error('Документ отгрузки не найден');
+            }
+        }
+        console.error('Error fetching shipment by ID:', error);
+        throw new Error('Не удалось загрузить документ отгрузки');
+    }
 };
 
-// Method to archive a unit
-export const archiveUnit = async (id: number): Promise<void> => {
-    await api.delete(`/UnitsOfMeasure/${id}`);
-};
-
-// Method to get a receipt by ID
-export const getReceiptById = async (id: number): Promise<ReceiptDocument> => {
-    const response = await api.get<ReceiptDocument>(`/Receipts/${id}`);
-    return response.data;
-};
-
-// Method to update a receipt
-export const updateReceipt = async (id: number, receipt: Partial<ReceiptDocument>): Promise<void> => {
-    await api.put(`/Receipts/${id}`, receipt);
-};
-
-// Method to archive a receipt
 export const archiveReceipt = async (id: number): Promise<void> => {
-    await api.delete(`/Receipts/${id}`);
-};
+    if (id <= 0) {
+        throw new Error('Некорректный ID документа поступления');
+    }
 
-// Method to get a shipment by ID
-export const getShipmentById = async (id: number): Promise<ShipmentDocument> => {
     try {
-        const response = await api.get<ShipmentDocument>(`/Shipments/${id}`);
-        return response.data;
+        await api.delete(`/receipts/${id}`);
     } catch (error) {
-        throw new Error('�� ������� �������� ��������');
+        if (error instanceof AxiosError) {
+            if (error.response?.status === 404) {
+                throw new Error('Документ поступления не найден');
+            } else if (error.response?.status === 400) {
+                throw new Error('Некорректный запрос: невозможно архивировать подписанный документ');
+            }
+        }
+        console.error('Error archiving receipt:', error);
+        throw new Error('Не удалось архивировать документ поступления');
     }
 };
 
-// Method to update a shipment
-export const updateShipment = async (id: number, shipment: Partial<ShipmentDocument>): Promise<void> => {
+export const restoreResource = async (id: number): Promise<void> => {
+    if (id <= 0) {
+        throw new Error('Некорректный ID ресурса');
+    }
+
     try {
-        await api.put(`/Shipments/${id}`, shipment);
+        await api.post(`/resources/${id}/restore`);
     } catch (error) {
-        throw new Error('�� ������� �������� ��������');
+        if (error instanceof AxiosError) {
+            if (error.response?.status === 404) {
+                throw new Error('Ресурс не найден');
+            }
+        }
+        console.error('Error restoring resource:', error);
+        throw new Error('Не удалось восстановить ресурс');
     }
 };
 
-// Method to archive a shipment
+export const restoreUnit = async (id: number): Promise<void> => {
+    if (id <= 0) {
+        throw new Error('Некорректный ID единицы измерения');
+    }
+
+    try {
+        await api.post(`/units/${id}/restore`);
+    } catch (error) {
+        if (error instanceof AxiosError) {
+            if (error.response?.status === 404) {
+                throw new Error('Единица измерения не найдена');
+            }
+        }
+        console.error('Error restoring unit:', error);
+        throw new Error('Не удалось восстановить единицу измерения');
+    }
+};
+
+
+export const updateReceipt = async (
+    id: number,
+    request: CreateReceiptDocumentRequest
+): Promise<void> => {
+    if (id <= 0) {
+        throw new Error('Некорректный ID документа');
+    }
+
+    try {
+        await api.put(`/receipts/${id}`, request);
+    } catch (error) {
+        if (error instanceof AxiosError) {
+            if (error.response?.status === 404) {
+                throw new Error('Документ не найден');
+            } else if (error.response?.status === 400) {
+                throw new Error(error.response.data.message || 'Некорректные данные');
+            }
+        }
+        console.error('Error updating receipt:', error);
+        throw new Error('Не удалось обновить документ поступления');
+    }
+};
+
 export const archiveShipment = async (id: number): Promise<void> => {
+    if (id <= 0) {
+        throw new Error('Некорректный ID документа отгрузки');
+    }
+
     try {
-        await api.delete(`/Shipments/${id}`);
+        await api.delete(`/shipments/${id}`);
     } catch (error) {
-        throw new Error('�� ������� ������������ ��������');
+        if (error instanceof AxiosError) {
+            if (error.response?.status === 404) {
+                throw new Error('Документ отгрузки не найден');
+            } else if (error.response?.status === 400) {
+                throw new Error('Невозможно архивировать подписанный документ');
+            }
+        }
+        console.error('Error archiving shipment:', error);
+        throw new Error('Не удалось архивировать документ отгрузки');
+    }
+};
+
+export const updateShipment = async (
+    id: number,
+    request: CreateShipmentDocumentRequest
+): Promise<void> => {
+    if (id <= 0) {
+        throw new Error('Некорректный ID документа');
+    }
+
+    try {
+        await api.put(`/shipments/${id}`, request);
+    } catch (error) {
+        if (error instanceof AxiosError) {
+            if (error.response?.status === 404) {
+                throw new Error('Документ не найден');
+            } else if (error.response?.status === 400) {
+                throw new Error(error.response.data.message || 'Некорректные данные');
+            }
+        }
+        console.error('Error updating shipment:', error);
+        throw new Error('Не удалось обновить документ отгрузки');
     }
 };

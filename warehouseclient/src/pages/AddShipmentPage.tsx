@@ -19,11 +19,15 @@ import { ru } from 'date-fns/locale';
 import { format, isValid } from 'date-fns';
 import type { Resource, Unit, Client } from '../api/warehouseApi';
 import { getResources, getUnits, getClients } from '../api/warehouseApi';
+import { createShipment, signShipment } from '../api/warehouseApi'; 
 
 const AddShipmentPage = () => {
     const [resources, setResources] = useState<Resource[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
+
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     // Состояние для формы
     const [formData, setFormData] = useState({
@@ -120,27 +124,80 @@ const AddShipmentPage = () => {
         });
     };
 
-    // Функция сохранения новой отгрузки
     const handleSubmit = async () => {
         try {
-            // Здесь должна быть реализация отправки данных на сервер
-            console.log('Сохранение новой отгрузки:', formData);
-            alert('Отгрузка успешно сохранена!');
+            setLoading(true); // Добавьте состояние loading
+            setError(null);
+
+            // Валидация формы
+            if (!formData.documentNumber) {
+                setError('Поле "Номер" не может быть пустым');
+                return;
+            }
+            if (!formData.clientId) {
+                setError('Поле "Клиент" не может быть пустым');
+                return;
+            }
+            if (formData.items.length === 0 || formData.items.some(item => item.quantity <= 0)) {
+                setError('Добавьте хотя бы один ресурс с количеством больше 0');
+                return;
+            }
+
+            // Подготовка данных для отправки
+            const request: CreateShipmentDocumentRequest = {
+                number: formData.documentNumber,
+                date: formData.date.toISOString(), // Преобразуем в ISO строку
+                clientId: formData.clientId,
+                resources: formData.items.map(item => ({
+                    resourceId: item.resourceId,
+                    unitOfMeasureId: item.unitOfMeasureId,
+                    quantity: item.quantity
+                }))
+            };
+
+            // Вызов API для создания отгрузки
+            const createdShipment = await createShipment(request);
+
+            // Показываем успех
+            alert(`Отгрузка №${createdShipment.number} успешно создана!`);
+            // Опционально: перенаправить на страницу просмотра или очистить форму
+            // setFormData(initialState); // Сброс формы
         } catch (err) {
             console.error('Ошибка сохранения отгрузки:', err);
-            alert('Ошибка при сохранении отгрузки');
+            setError(err instanceof Error ? err.message : 'Ошибка при сохранении отгрузки');
+        } finally {
+            setLoading(false);
         }
     };
 
-    // Функция сохранения и подписания новой отгрузки
     const handleSubmitAndSign = async () => {
         try {
-            // Здесь должна быть реализация отправки данных на сервер с флагом подписи
-            console.log('Сохранение и подписание новой отгрузки:', formData);
-            alert('Отгрузка успешно сохранена и подписана!');
+            setLoading(true);
+            setError(null);
+
+            // Сначала создаем документ
+            const request: CreateShipmentDocumentRequest = {
+                number: formData.documentNumber,
+                date: formData.date.toISOString(),
+                clientId: formData.clientId,
+                resources: formData.items.map(item => ({
+                    resourceId: item.resourceId,
+                    unitOfMeasureId: item.unitOfMeasureId,
+                    quantity: item.quantity
+                }))
+            };
+
+            const createdShipment = await createShipment(request);
+
+            // Затем подписываем его
+            await signShipment(createdShipment.id);
+
+            alert(`Отгрузка №${createdShipment.number} успешно создана и подписана!`);
         } catch (err) {
             console.error('Ошибка сохранения и подписания отгрузки:', err);
-            alert('Ошибка при сохранении и подписании отгрузки');
+            setError(err instanceof Error ? err.message : 'Ошибка при сохранении и подписании отгрузки');
+        } finally {
+            setLoading(false);
         }
     };
 

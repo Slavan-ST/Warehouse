@@ -7,6 +7,7 @@ using WarehouseAPI.Models.Enums;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using WarehouseAPI.DTO;
+using WarehouseAPI.DTO.Requests;
 
 namespace WarehouseAPI.Services
 {
@@ -20,15 +21,17 @@ namespace WarehouseAPI.Services
             _logger = logger;
         }
 
-        public async Task<Result<Resource>> CreateResourceAsync(string name)
+        // WarehouseAPI/Services/ResourceService.cs
+        public async Task<Result<Resource>> CreateResourceAsync(CreateResourceRequest request)
         {
-            if (string.IsNullOrWhiteSpace(name))
+            // Reuse the existing validation logic
+            if (string.IsNullOrWhiteSpace(request.Name))
                 return Result.Failure<Resource>("Имя ресурса не может быть пустым");
 
-            if (await ExistsAsync(r => r.Name == name && r.Status == EntityStatus.Active))
+            if (await ExistsAsync(r => r.Name == request.Name && r.Status == EntityStatus.Active))
                 return Result.Failure<Resource>("Ресурс с таким названием уже существует");
 
-            var resource = new Resource { Name = name };
+            var resource = new Resource { Name = request.Name };
             _context.Resources.Add(resource);
 
             try
@@ -39,7 +42,7 @@ namespace WarehouseAPI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при сохранении нового ресурса с именем '{Name}'", name);
+                _logger.LogError(ex, "Ошибка при сохранении нового ресурса с именем '{Name}'", request.Name);
                 return Result.Failure<Resource>("Не удалось создать ресурс");
             }
         }
