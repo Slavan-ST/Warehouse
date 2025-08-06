@@ -18,6 +18,7 @@ import {
 import { format, isValid } from 'date-fns';
 import type { Resource, Unit } from '../api/warehouseApi';
 import { getResources, getUnits } from '../api/warehouseApi';
+import { createReceipt } from '../api/warehouseApi';
 
 const AddReceiptPage = () => {
     const [resources, setResources] = useState<Resource[]>([]);
@@ -130,24 +131,43 @@ const AddReceiptPage = () => {
     };
 
     // Функция сохранения нового поступления
+    // Функция сохранения нового поступления
     const handleSubmit = async () => {
         // Валидация формы
         if (!formData.documentNumber.trim()) {
             alert('Введите номер документа');
             return;
         }
-        if (formData.items.length === 0 || formData.items.some(item => item.resourceId === 0)) {
-            alert('Заполните все поля ресурсов');
+        if (
+            formData.items.length === 0 ||
+            formData.items.some(
+                (item) => item.resourceId === 0 || item.unitOfMeasureId === 0 || item.quantity <= 0
+            )
+        ) {
+            alert('Заполните все поля ресурсов корректно (ресурс, единица, количество > 0)');
             return;
         }
 
+        // Подготовка данных для отправки
+        const request: CreateReceiptDocumentRequest = {
+            number: formData.documentNumber.trim(),
+            date: format(formData.date, 'yyyy-MM-dd'), // или formData.date.toISOString().split('T')[0]
+            resources: formData.items.map(item => ({
+                resourceId: item.resourceId,
+                unitOfMeasureId: item.unitOfMeasureId,
+                quantity: item.quantity,
+            })),
+        };
+
         try {
-            // Здесь должна быть реализация отправки данных на сервер
-            console.log('Сохранение нового поступления:', formData);
+            const result = await createReceipt(request);
+            console.log('Поступление успешно создано:', result);
             alert('Поступление успешно сохранено!');
+            // Можно перенаправить на страницу поступлений
+            // например: navigate('/incomes');
         } catch (err) {
             console.error('Ошибка сохранения поступления:', err);
-            alert('Ошибка при сохранении поступления');
+            alert(err instanceof Error ? err.message : 'Ошибка при сохранении поступления');
         }
     };
 
