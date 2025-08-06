@@ -145,7 +145,6 @@ namespace WarehouseAPI.Services
             try
             {
                 return await _context.Resources
-                    .Where(r => r.Status == EntityStatus.Active)
                     .Select(r => new ResourceDto(
                         r.Id,
                         r.Name,
@@ -165,7 +164,6 @@ namespace WarehouseAPI.Services
             try
             {
                 return await _context.Resources
-                    .Where(r => r.Id == id && r.Status == EntityStatus.Active)
                     .Select(r => new ResourceDto(
                         r.Id,
                         r.Name,

@@ -36,10 +36,6 @@ namespace WarehouseAPI.Controllers
             try
             {
                 var query = _unitService.Query();
-                if (!includeArchive)
-                {
-                    query = query.Where(u => u.Status == EntityStatus.Active);
-                }
 
                 var units = await query
                     .Select(u => new UnitOfMeasureDto(u.Id, u.Name, u.Status))

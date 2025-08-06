@@ -141,7 +141,6 @@ namespace WarehouseAPI.Services
             try
             {
                 return await _context.UnitsOfMeasure
-                    .Where(u => u.Status == EntityStatus.Active)
                     .Select(u => new UnitOfMeasureDto(u.Id, u.Name, u.Status))
                     .ToListAsync();
             }

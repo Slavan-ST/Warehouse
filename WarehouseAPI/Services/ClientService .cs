@@ -119,7 +119,6 @@ namespace WarehouseAPI.Services
             try
             {
                 return await _context.Clients
-                    .Where(c => c.Status == EntityStatus.Active)
                     .Select(c => new ClientDto(
                         c.Id,
                         c.Name,
@@ -140,7 +139,6 @@ namespace WarehouseAPI.Services
             try
             {
                 return await _context.Clients
-                    .Where(c => c.Id == id && c.Status == EntityStatus.Active)
                     .Select(c => new ClientDto(
                         c.Id,
                         c.Name,
