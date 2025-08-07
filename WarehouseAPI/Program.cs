@@ -22,10 +22,10 @@ namespace WarehouseAPI
                 {
                     Title = "Warehouse API",
                     Version = "v1",
-                    Description = "API для управления складом, поступлениями и отгрузками",
+                    Description = "API СѓРїСЂР°РІР»РµРЅРёСЏ СЃРєР»Р°РґРѕРј",
                     Contact = new OpenApiContact
                     {
-                        Name = "Ваша команда",
+                        Name = "Slavan",
                         Email = "support@yourcompany.com"
                     }
                 });
@@ -50,7 +50,7 @@ namespace WarehouseAPI
 
 
 
-            // Добавляем AutoMapper
+            // Г„Г®ГЎГ ГўГ«ГїГҐГ¬ AutoMapper
             builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 
@@ -70,21 +70,39 @@ namespace WarehouseAPI
             app.UseCors("AllowAll");
             if (app.Environment.IsDevelopment())
             {
-                app.UseSwagger();
+                
+            }
+
+
+            app.Use((context, next) =>
+            {
+                if (context.Request.Path.StartsWithSegments("/swagger"))
+                {
+                    context.Response.Headers["Content-Type"] = "application/json; charset=utf-8";
+                }
+                return next();
+            });
+
+
+            app.UseSwagger();
                 app.UseSwaggerUI(c =>
                 {
                     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Warehouse API v1");
-                    c.RoutePrefix = "api-docs"; // Доступ по /api-docs
+                    c.RoutePrefix = "api-docs"; // Г„Г®Г±ГІГіГЇ ГЇГ® /api-docs
                     c.DisplayOperationId();
                     c.DisplayRequestDuration();
                 });
-            }
+
+
+
+
+
 
             using (var scope = app.Services.CreateScope())
             {
                 var services = scope.ServiceProvider;
                 var context = services.GetRequiredService<AppDbContext>();
-                context.Database.Migrate(); // Создаёт БД и применяет миграции
+                context.Database.Migrate(); // Г‘Г®Г§Г¤Г ВёГІ ГЃГ„ ГЁ ГЇГ°ГЁГ¬ГҐГ­ГїГҐГІ Г¬ГЁГЈГ°Г Г¶ГЁГЁ
             }
 
             app.UseAuthorization();

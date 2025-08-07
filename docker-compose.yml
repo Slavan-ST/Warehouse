@@ -1,32 +1,47 @@
+
 services:
+  db:
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    environment:
+      SA_PASSWORD: "YourStrong@Pass123"
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Express"
+      MSSQL_COLLATION: Cyrillic_General_CI_AS
+      
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD", "sqlcmd", "-U", "sa", "-P", "YourStrong@Pass123", "-Q", "SELECT 1", "-C"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+
   warehouseapi:
     build:
       context: .
       dockerfile: WarehouseAPI/Dockerfile
     ports:
-      - "5000:80"
+      - "5000:8080"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=Warehouse;User Id=sa;Password=Passw0rd!234;TrustServerCertificate=True;
+      - ConnectionStrings__DefaultConnection=Server=db;Database=Warehouse;User=sa;Password=YourStrong@Pass123;TrustServerCertificate=True;
     depends_on:
-      sqlserver:
+      db:
         condition: service_healthy
 
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2019-latest
-    environment:
-      SA_PASSWORD: "Passw0rd!234"
-      ACCEPT_EULA: "Y"
+  warehouseclient:
+    build:
+      context: ./warehouseclient
+      dockerfile: Dockerfile
     ports:
-      - "1433:1433"
-    volumes:
-      - sql_data:/var/opt/mssql
-    healthcheck:
-      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "Passw0rd!234", "-Q", "select 1"]
-      interval: 10s
-      retries: 15
-      timeout: 5s
-      start_period: 60s
+      - "3000:80"
+    depends_on:
+      - warehouseapi
 
 volumes:
-  sql_data:
+  mssql_data:
