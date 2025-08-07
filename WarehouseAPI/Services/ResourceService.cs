@@ -145,6 +145,7 @@ namespace WarehouseAPI.Services
             try
             {
                 return await _context.Resources
+                    .Where(r => r.Status == EntityStatus.Active)
                     .Select(r => new ResourceDto(
                         r.Id,
                         r.Name,
@@ -193,6 +194,26 @@ namespace WarehouseAPI.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при получении всех ресурсов");
+                return new List<ResourceDto>();
+            }
+        }
+
+        public async Task<List<ResourceDto>> GetArchivedResourcesAsync()
+        {
+            try
+            {
+                return await _context.Resources
+                    .Where(r => r.Status == EntityStatus.Archived)
+                    .Select(r => new ResourceDto(
+                        r.Id,
+                        r.Name,
+                        r.Status
+                    ))
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении архивированных ресурсов");
                 return new List<ResourceDto>();
             }
         }

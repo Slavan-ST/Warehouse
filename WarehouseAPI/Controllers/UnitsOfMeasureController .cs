@@ -163,5 +163,37 @@ namespace WarehouseAPI.Controllers
                 return StatusCode(500, "Внутренняя ошибка сервера");
             }
         }
+
+        // GET: api/units/active
+        [HttpGet("active")]
+        public async Task<IActionResult> GetActiveUnits()
+        {
+            try
+            {
+                var units = await _unitService.GetActiveUnitsAsync();
+                return Ok(units);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении активных единиц измерения");
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
+        }
+
+        // GET: api/units/archive
+        [HttpGet("archive")]
+        public async Task<IActionResult> GetArchivedUnits()
+        {
+            try
+            {
+                var units = await _unitService.GetArchivedUnitsAsync();
+                return Ok(units);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении архивированных единиц измерения");
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
+        }
     }
 }

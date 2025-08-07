@@ -144,5 +144,37 @@ namespace WarehouseAPI.Controllers
 
             return BadRequest(new { message = result.Error });
         }
+
+        // GET: api/clients/active
+        [HttpGet("active")]
+        public async Task<IActionResult> GetActiveClients()
+        {
+            try
+            {
+                var clients = await _clientService.GetActiveClientsAsync();
+                return Ok(clients);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении активных клиентов");
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
+        }
+
+        // GET: api/clients/archive
+        [HttpGet("archive")]
+        public async Task<IActionResult> GetArchivedClients()
+        {
+            try
+            {
+                var clients = await _clientService.GetArchivedClientsAsync();
+                return Ok(clients);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении архивированных клиентов");
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
+        }
     }
 }

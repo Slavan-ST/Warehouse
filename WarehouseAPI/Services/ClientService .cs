@@ -120,6 +120,7 @@ namespace WarehouseAPI.Services
             try
             {
                 return await _context.Clients
+                    .Where(c => c.Status == EntityStatus.Active)
                     .Select(c => new ClientDto(
                         c.Id,
                         c.Name,
@@ -131,6 +132,27 @@ namespace WarehouseAPI.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при получении списка активных клиентов");
+                return new List<ClientDto>();
+            }
+        }
+
+        public async Task<List<ClientDto>> GetArchivedClientsAsync()
+        {
+            try
+            {
+                return await _context.Clients
+                    .Where(c => c.Status == EntityStatus.Archived)
+                    .Select(c => new ClientDto(
+                        c.Id,
+                        c.Name,
+                        c.Address,
+                        c.Status
+                    ))
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении архивированных клиентов");
                 return new List<ClientDto>();
             }
         }

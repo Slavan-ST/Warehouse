@@ -1,27 +1,26 @@
-﻿import React, { useState, useEffect } from 'react';
-import { Typography, Box, TextField, Button } from '@mui/material';
-import { getResourceById, updateResource, archiveResource } from '../api/warehouseApi';
+﻿// src/pages/UpdateResourcePage.tsx
+import React, { useState, useEffect } from 'react';
+import { Typography, Box, TextField, Button, Alert } from '@mui/material';
+import { getResourceById, updateResource, archiveResource, restoreResource } from '../api/warehouseApi';
+import { useNavigate } from 'react-router-dom';
 import { useParams } from 'react-router-dom';
 
 interface Resource {
     id: number;
     name: string;
+    status?: number; // 0 = active, 1 = archived
 }
 
 const UpdateResourcePage = () => {
     const { id } = useParams<{ id: string }>();
     const resourceId = Number(id);
-    // State for form data
-    const [resource, setResource] = useState<Resource | null>(null);
-    const [formData, setFormData] = useState({
-        name: '',
-    });
+    const navigate = useNavigate();
 
-    // State for loading and error messages
+    const [resource, setResource] = useState<Resource | null>(null);
+    const [formData, setFormData] = useState({ name: '' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch the resource by ID on mount
     useEffect(() => {
         const fetchResource = async () => {
             try {
@@ -33,33 +32,24 @@ const UpdateResourcePage = () => {
                 setError('Не удалось загрузить данные ресурса');
             }
         };
-
         fetchResource();
     }, [resourceId]);
 
-    // Handle form input changes
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, name: e.target.value });
     };
 
-    // Handle save button click
     const handleSave = async () => {
+        if (!formData.name) {
+            setError('Поле "Наименование" не может быть пустым');
+            return;
+        }
+
         try {
             setLoading(true);
             setError(null);
-
-            // Validate form data
-            if (!formData.name) {
-                setError('Поле "Наименование" не может быть пустым');
-                return;
-            }
-
-            // Send PUT request to update the resource
             await updateResource(resourceId, formData.name);
-
-            // Show success message
             alert('Ресурс успешно обновлен!');
-            setFormData({ name: formData.name }); // Refresh form data
         } catch (err) {
             console.error('Ошибка обновления ресурса:', err);
             setError('Ошибка при обновлении ресурса');
@@ -68,21 +58,35 @@ const UpdateResourcePage = () => {
         }
     };
 
-    // Handle archive button click
     const handleArchive = async () => {
+        if (!window.confirm('Вы уверены, что хотите архивировать этот ресурс?')) return;
+
         try {
             setLoading(true);
             setError(null);
-
-            // Send POST request to archive the resource
             await archiveResource(resourceId);
-
-            // Show success message
             alert('Ресурс успешно архивирован!');
-            window.location.href = '/resources'; // Redirect to resource list
+            navigate('/resources');
         } catch (err) {
             console.error('Ошибка архивации ресурса:', err);
             setError('Ошибка при архивации ресурса');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRestore = async () => {
+        if (!window.confirm('Восстановить ресурс в активные?')) return;
+
+        try {
+            setLoading(true);
+            setError(null);
+            await restoreResource(resourceId);
+            alert('Ресурс успешно восстановлен!');
+            navigate('/resources');
+        } catch (err) {
+            console.error('Ошибка восстановления ресурса:', err);
+            setError('Ошибка при восстановлении ресурса');
         } finally {
             setLoading(false);
         }
@@ -92,11 +96,14 @@ const UpdateResourcePage = () => {
         return <div>Загрузка...</div>;
     }
 
+    const isArchived = resource.status === 1;
+
     return (
         <Box sx={{ p: 3 }}>
             <Typography variant="h4" gutterBottom>Ресурс</Typography>
+            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
             <Box sx={{ mt: 2 }}>
-                {/* Поле для наименования */}
                 <TextField
                     label="Наименование"
                     value={formData.name}
@@ -105,35 +112,49 @@ const UpdateResourcePage = () => {
                     sx={{ mb: 2 }}
                     helperText={error && error}
                     error={!!error}
+                    disabled={isArchived}
                 />
             </Box>
-            {/* Buttons */}
+
             <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
                 <Button
                     variant="contained"
                     color="success"
                     onClick={handleSave}
-                    disabled={!formData.name || loading}
-                    sx={{ mr: 2 }}
+                    disabled={!formData.name || loading || isArchived}
                 >
                     {loading ? 'Обновление...' : 'Сохранить'}
                 </Button>
-                <Button
-                    variant="contained"
-                    color="error"
-                    onClick={handleArchive}
-                    disabled={loading}
-                >
-                    {loading ? 'Архивация...' : 'Удалить'}
-                </Button>
-                <Button
-                    variant="contained"
-                    color="warning"
-                    onClick={handleArchive}
-                    disabled={loading}
-                >
-                    {loading ? 'Архивация...' : 'В архив'}
-                </Button>
+
+                {!isArchived ? (
+                    <>
+                        <Button
+                            variant="contained"
+                            color="error"
+                            onClick={handleArchive}
+                            disabled={loading}
+                        >
+                            {loading ? 'Архивация...' : 'Удалить'}
+                        </Button>
+                        <Button
+                            variant="contained"
+                            color="warning"
+                            onClick={handleArchive}
+                            disabled={loading}
+                        >
+                            {loading ? 'Архивация...' : 'В архив'}
+                        </Button>
+                    </>
+                ) : (
+                    <Button
+                        variant="contained"
+                        color="success"
+                        onClick={handleRestore}
+                        disabled={loading}
+                    >
+                        {loading ? 'Восстановление...' : 'В работу'}
+                    </Button>
+                )}
             </Box>
         </Box>
     );

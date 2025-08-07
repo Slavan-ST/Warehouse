@@ -149,5 +149,37 @@ namespace WarehouseAPI.Controllers
                 return StatusCode(500, "Внутренняя ошибка сервера");
             }
         }
+
+        // GET: api/resources/active
+        [HttpGet("active")]
+        public async Task<IActionResult> GetActiveResources()
+        {
+            try
+            {
+                var resources = await _resourceService.GetActiveResourcesAsync();
+                return Ok(resources);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении активных ресурсов");
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
+        }
+
+        // GET: api/resources/archive
+        [HttpGet("archive")]
+        public async Task<IActionResult> GetArchivedResources()
+        {
+            try
+            {
+                var resources = await _resourceService.GetArchivedResourcesAsync(); // Нужно добавить в сервис
+                return Ok(resources);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении архивированных ресурсов");
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
+        }
     }
 }

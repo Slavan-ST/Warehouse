@@ -137,7 +137,6 @@ export interface ShipmentItem {
 
 
 
-// Получить все активные ресурсы
 export const getResources = async (): Promise<ResourceDto[]> => {
     try {
         const response = await api.get<ResourceDto[]>('/resources');
@@ -678,5 +677,75 @@ export const updateShipment = async (
         }
         console.error('Error updating shipment:', error);
         throw new Error('Не удалось обновить документ отгрузки');
+    }
+};
+
+
+// Получить только активные ресурсы
+export const getActiveResources = async (): Promise<ResourceDto[]> => {
+    try {
+        const response = await api.get<ResourceDto[]>('/resources/active');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching active resources:', error);
+        throw new Error('Не удалось загрузить активные ресурсы');
+    }
+};
+
+// Получить только архивированные ресурсы
+export const getArchivedResources = async (): Promise<ResourceDto[]> => {
+    try {
+        const response = await api.get<ResourceDto[]>('/resources/archive');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching archived resources:', error);
+        throw new Error('Не удалось загрузить архивированные ресурсы');
+    }
+};
+
+
+
+// Получить только активные единицы измерения
+export const getActiveUnits = async (): Promise<UnitOfMeasureDto[]> => {
+    try {
+        const response = await api.get<UnitOfMeasureDto[]>('/units/active');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching active units:', error);
+        throw new Error('Не удалось загрузить активные единицы измерения');
+    }
+};
+
+// Получить только архивированные единицы измерения
+export const getArchivedUnits = async (): Promise<UnitOfMeasureDto[]> => {
+    try {
+        const response = await api.get<UnitOfMeasureDto[]>('/units/archive');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching archived units:', error);
+        throw new Error('Не удалось загрузить архивированные единицы измерения');
+    }
+};
+
+
+// Получить только активных клиентов
+export const getActiveClients = async (): Promise<ClientDto[]> => {
+    try {
+        const response = await api.get<ClientDto[]>('/clients/active');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching active clients:', error);
+        throw new Error('Не удалось загрузить активных клиентов');
+    }
+};
+
+// Получить только архивированных клиентов
+export const getArchivedClients = async (): Promise<ClientDto[]> => {
+    try {
+        const response = await api.get<ClientDto[]>('/clients/archive');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching archived clients:', error);
+        throw new Error('Не удалось загрузить архивированных клиентов');
     }
 };
