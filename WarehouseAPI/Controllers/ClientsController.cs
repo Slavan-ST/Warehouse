@@ -129,5 +129,20 @@ namespace WarehouseAPI.Controllers
                 return StatusCode(500, "Внутренняя ошибка сервера");
             }
         }
+
+        // POST: api/clients/{id}/restore
+        [HttpPost("{id}/restore")]
+        public async Task<IActionResult> RestoreClient(int id)
+        {
+            var result = await _clientService.RestoreClientAsync(id);
+
+            if (result.IsSuccess)
+                return NoContent();
+
+            if (result.Error.Contains("не найден"))
+                return NotFound(new { message = result.Error });
+
+            return BadRequest(new { message = result.Error });
+        }
     }
 }

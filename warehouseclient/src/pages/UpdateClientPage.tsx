@@ -2,6 +2,7 @@
 import { Typography, Box, TextField, Button } from '@mui/material';
 import { getClientById, updateClient, archiveClient } from '../api/warehouseApi';
 import { useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface Client {
     id: number;
@@ -13,6 +14,7 @@ const UpdateClientPage = () => {
 
     const { id } = useParams<{ id: string }>();
     const clientId = Number(id);
+    const navigate = useNavigate();
 
     // State for form data
     const [client, setClient] = useState<Client | null>(null);
@@ -37,9 +39,22 @@ const UpdateClientPage = () => {
                 setError('Не удалось загрузить данные клиента');
             }
         };
-
         fetchClient();
     }, [clientId]);
+    const handleRestore = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            await api.post(`/clients/${clientId}/restore`);
+            alert('Клиент восстановлен и возвращён в работу');
+            setClient({ ...client!, status: 0 }); // Обновляем статус
+        } catch (err) {
+            console.error('Ошибка восстановления клиента:', err);
+            setError('Не удалось восстановить клиента');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Handle form input changes
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,13 +96,9 @@ const UpdateClientPage = () => {
         try {
             setLoading(true);
             setError(null);
-
-            // Send DELETE request to archive the client
             await archiveClient(clientId);
-
-            // Show success message
             alert('Клиент успешно архивирован!');
-            window.location.href = '/clients'; // Redirect to client list
+            navigate('/clients');
         } catch (err) {
             console.error('Ошибка архивации клиента:', err);
             setError('Ошибка при архивации клиента');
@@ -131,27 +142,30 @@ const UpdateClientPage = () => {
                     variant="contained"
                     color="success"
                     onClick={handleSave}
-                    disabled={!formData.name || !formData.address || loading}
-                    sx={{ mr: 2 }}
+                    disabled={!formData.name || !formData.address || loading || client?.status !== 0}
                 >
-                    {loading ? 'Обновление...' : 'Сохранить'}
+                    {loading ? 'Сохранение...' : 'Сохранить'}
                 </Button>
-                <Button
-                    variant="contained"
-                    color="error"
-                    onClick={handleArchive}
-                    disabled={loading}
-                >
-                    {loading ? 'Архивация...' : 'Удалить'}
-                </Button>
-                <Button
-                    variant="contained"
-                    color="warning"
-                    onClick={handleArchive}
-                    disabled={loading}
-                >
-                    {loading ? 'Архивация...' : 'В архив'}
-                </Button>
+
+                {client?.status === 0 ? (
+                    <Button
+                        variant="contained"
+                        color="warning"
+                        onClick={handleArchive}
+                        disabled={loading}
+                    >
+                        {loading ? 'Архивация...' : 'В архив'}
+                    </Button>
+                ) : (
+                    <Button
+                        variant="contained"
+                        color="success"
+                        onClick={handleRestore}
+                        disabled={loading}
+                    >
+                        {loading ? 'Восстановление...' : 'Вернуть в работу'}
+                    </Button>
+                )}
             </Box>
         </Box>
     );

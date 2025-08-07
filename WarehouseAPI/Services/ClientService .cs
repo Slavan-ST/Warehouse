@@ -5,6 +5,7 @@ using WarehouseAPI.Models;
 using WarehouseAPI.Models.Enums;
 using WarehouseAPI.DTO;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Mvc;
 
 namespace WarehouseAPI.Services
 {
@@ -160,6 +161,44 @@ namespace WarehouseAPI.Services
             return await _context.Clients
                 .Include(c => c.ShipmentDocuments)
                 .FirstOrDefaultAsync(c => c.Id == id);
+        }
+
+        // ClientService.cs
+
+        public async Task<Result> RestoreClientAsync(int id)
+        {
+            if (id <= 0)
+                return Result.Failure("Некорректный ID");
+
+            var client = await _context.Clients.FindAsync(id);
+            if (client == null)
+                return Result.Failure("Клиент не найден");
+
+            if (client.Status == EntityStatus.Active)
+                return Result.Success(); // Идемпотентность
+
+            // Проверяем, существует ли активный клиент с таким же именем
+            var existsActiveWithSameName = await _context.Clients
+                .AnyAsync(c => c.Name == client.Name &&
+                               c.Id != id &&
+                               c.Status == EntityStatus.Active);
+
+            if (existsActiveWithSameName)
+                return Result.Failure($"Клиент с наименованием '{client.Name}' уже существует");
+
+            client.Status = EntityStatus.Active;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Клиент с ID {ClientId} восстановлен из архива", id);
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при восстановлении клиента с ID {Id}", id);
+                return Result.Failure("Не удалось восстановить клиента");
+            }
         }
     }
 }
