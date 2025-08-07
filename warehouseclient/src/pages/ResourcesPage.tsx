@@ -14,7 +14,7 @@ import {
     Alert,
     Grid,
 } from '@mui/material';
-import { getResources } from '../api/warehouseApi';
+import { getActiveResources, getArchivedResources } from '../api/warehouseApi';
 import type { Resource } from '../api/warehouseApi';
 import { Link } from 'react-router-dom';
 
@@ -25,21 +25,18 @@ const ResourcesPage = () => {
     const [view, setView] = useState<'active' | 'archive'>('active');
 
     useEffect(() => {
-        const loadResources = async () => {
+        const load = async () => {
             try {
-                setLoading(true);
-                setError(null);
-                const response = await getResources();
-                setResources(response);
+                const data = view === 'active' ? await getActiveResources() : await getArchivedResources();
+                setResources(data);
             } catch (err) {
-                console.error('Ошибка загрузки ресурсов:', err);
-                setError('Не удалось загрузить ресурсы. Пожалуйста, попробуйте позже.');
+                setError('Ошибка загрузки ресурсов');
             } finally {
                 setLoading(false);
             }
         };
-        loadResources();
-    }, []);
+        load();
+    }, [view]);
 
     const filteredResources = resources.filter(resource => {
         const status = resource.status ?? 0;

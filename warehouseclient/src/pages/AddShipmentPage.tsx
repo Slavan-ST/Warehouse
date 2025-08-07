@@ -15,21 +15,35 @@ import {
     MenuItem,
     Select,
 } from '@mui/material';
-import { ru } from 'date-fns/locale';
 import { format, isValid } from 'date-fns';
-import type { Resource, Unit, Client } from '../api/warehouseApi';
-import { getResources, getUnits, getClients } from '../api/warehouseApi';
-import { createShipment, signShipment } from '../api/warehouseApi'; 
+import type { ResourceDto, UnitOfMeasureDto, ClientDto } from '../api/warehouseApi';
+import {
+    getActiveResources,
+    getActiveUnits,
+    getActiveClients,
+} from '../api/warehouseApi';
+import { createShipment, signShipment } from '../api/warehouseApi';
+
+// Типы для запроса (должны быть определены в warehouseApi, но на всякий случай уточним)
+interface CreateShipmentDocumentRequest {
+    number: string;
+    date: string;
+    clientId: number;
+    resources: {
+        resourceId: number;
+        unitOfMeasureId: number;
+        quantity: number;
+    }[];
+}
 
 const AddShipmentPage = () => {
-    const [resources, setResources] = useState<Resource[]>([]);
-    const [units, setUnits] = useState<Unit[]>([]);
-    const [clients, setClients] = useState<Client[]>([]);
-
+    const [resources, setResources] = useState<ResourceDto[]>([]);
+    const [units, setUnits] = useState<UnitOfMeasureDto[]>([]);
+    const [clients, setClients] = useState<ClientDto[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Состояние для формы
+    // Состояние формы
     const [formData, setFormData] = useState({
         documentNumber: '',
         clientId: null as number | null,
@@ -41,38 +55,45 @@ const AddShipmentPage = () => {
         }[],
     });
 
-    // Загрузка справочников
+    // Загрузка справочников — только активные
     useEffect(() => {
         const loadReferences = async () => {
             try {
-                const [res, unt, clt] = await Promise.all([getResources(), getUnits(), getClients()]);
+                const [res, unt, clt] = await Promise.all([
+                    getActiveResources(),
+                    getActiveUnits(),
+                    getActiveClients(),
+                ]);
                 setResources(res);
                 setUnits(unt);
                 setClients(clt);
             } catch (err) {
                 console.error('Ошибка загрузки справочников:', err);
+                setError('Не удалось загрузить справочники');
             }
         };
         loadReferences();
     }, []);
 
-    // Обработчик изменения номера документа
     const handleDocumentNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, documentNumber: e.target.value });
+        setError(null);
     };
 
-    // Обработчик изменения клиента
     const handleClientChange = (e: React.ChangeEvent<{ value: unknown }>) => {
         setFormData({ ...formData, clientId: e.target.value as number });
+        setError(null);
     };
 
-    // Обработчик изменения даты
-    const handleDateChange = (newValue: string | null) => {
-        if (!newValue || !isValid(new Date(newValue))) return;
-        setFormData({ ...formData, date: new Date(newValue) });
+    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newValue = e.target.value;
+        if (!newValue) return;
+        const newDate = new Date(newValue);
+        if (isValid(newDate)) {
+            setFormData({ ...formData, date: newDate });
+        }
     };
 
-    // Обработчик добавления нового ресурса
     const handleAddItem = () => {
         setFormData({
             ...formData,
@@ -83,17 +104,16 @@ const AddShipmentPage = () => {
         });
     };
 
-    // Обработчик удаления ресурса
     const handleRemoveItem = (index: number) => {
+        if (formData.items.length <= 1) return;
         setFormData({
             ...formData,
             items: formData.items.filter((_, i) => i !== index),
         });
     };
 
-    // Обработчик изменения значения ресурса
     const handleResourceChange = (index: number, value: string) => {
-        const resourceId = parseInt(value, 10);
+        const resourceId = value ? parseInt(value, 10) : 0;
         setFormData({
             ...formData,
             items: formData.items.map((item, i) =>
@@ -102,9 +122,8 @@ const AddShipmentPage = () => {
         });
     };
 
-    // Обработчик изменения единицы измерения
     const handleUnitChange = (index: number, value: string) => {
-        const unitOfMeasureId = parseInt(value, 10);
+        const unitOfMeasureId = value ? parseInt(value, 10) : 0;
         setFormData({
             ...formData,
             items: formData.items.map((item, i) =>
@@ -113,55 +132,51 @@ const AddShipmentPage = () => {
         });
     };
 
-    // Обработчик изменения количества
     const handleQuantityChange = (index: number, value: string) => {
-        const quantity = parseInt(value, 10);
+        const quantity = value === '' ? 0 : parseInt(value, 10);
+        const safeQuantity = isNaN(quantity) ? 0 : quantity;
         setFormData({
             ...formData,
             items: formData.items.map((item, i) =>
-                i === index ? { ...item, quantity } : item
+                i === index ? { ...item, quantity: safeQuantity } : item
             ),
         });
     };
 
     const handleSubmit = async () => {
         try {
-            setLoading(true); // Добавьте состояние loading
+            setLoading(true);
             setError(null);
 
-            // Валидация формы
-            if (!formData.documentNumber) {
+            if (!formData.documentNumber.trim()) {
                 setError('Поле "Номер" не может быть пустым');
                 return;
             }
-            if (!formData.clientId) {
+            if (formData.clientId === null) {
                 setError('Поле "Клиент" не может быть пустым');
                 return;
             }
-            if (formData.items.length === 0 || formData.items.some(item => item.quantity <= 0)) {
-                setError('Добавьте хотя бы один ресурс с количеством больше 0');
+            if (
+                formData.items.length === 0 ||
+                formData.items.some(item => item.resourceId === 0 || item.quantity <= 0)
+            ) {
+                setError('Добавьте хотя бы один ресурс с корректным количеством (> 0)');
                 return;
             }
 
-            // Подготовка данных для отправки
             const request: CreateShipmentDocumentRequest = {
-                number: formData.documentNumber,
-                date: formData.date.toISOString(), // Преобразуем в ISO строку
+                number: formData.documentNumber.trim(),
+                date: format(formData.date, 'yyyy-MM-dd'),
                 clientId: formData.clientId,
                 resources: formData.items.map(item => ({
                     resourceId: item.resourceId,
                     unitOfMeasureId: item.unitOfMeasureId,
-                    quantity: item.quantity
-                }))
+                    quantity: item.quantity,
+                })),
             };
 
-            // Вызов API для создания отгрузки
             const createdShipment = await createShipment(request);
-
-            // Показываем успех
             alert(`Отгрузка №${createdShipment.number} успешно создана!`);
-            // Опционально: перенаправить на страницу просмотра или очистить форму
-            // setFormData(initialState); // Сброс формы
         } catch (err) {
             console.error('Ошибка сохранения отгрузки:', err);
             setError(err instanceof Error ? err.message : 'Ошибка при сохранении отгрузки');
@@ -175,27 +190,39 @@ const AddShipmentPage = () => {
             setLoading(true);
             setError(null);
 
-            // Сначала создаем документ
+            if (!formData.documentNumber.trim()) {
+                setError('Поле "Номер" не может быть пустым');
+                return;
+            }
+            if (formData.clientId === null) {
+                setError('Поле "Клиент" не может быть пустым');
+                return;
+            }
+            if (
+                formData.items.length === 0 ||
+                formData.items.some(item => item.resourceId === 0 || item.quantity <= 0)
+            ) {
+                setError('Добавьте хотя бы один ресурс с корректным количеством (> 0)');
+                return;
+            }
+
             const request: CreateShipmentDocumentRequest = {
-                number: formData.documentNumber,
-                date: formData.date.toISOString(),
+                number: formData.documentNumber.trim(),
+                date: format(formData.date, 'yyyy-MM-dd'),
                 clientId: formData.clientId,
                 resources: formData.items.map(item => ({
                     resourceId: item.resourceId,
                     unitOfMeasureId: item.unitOfMeasureId,
-                    quantity: item.quantity
-                }))
+                    quantity: item.quantity,
+                })),
             };
 
             const createdShipment = await createShipment(request);
-
-            // Затем подписываем его
             await signShipment(createdShipment.id);
-
             alert(`Отгрузка №${createdShipment.number} успешно создана и подписана!`);
         } catch (err) {
             console.error('Ошибка сохранения и подписания отгрузки:', err);
-            setError(err instanceof Error ? err.message : 'Ошибка при сохранении и подписании отгрузки');
+            setError(err instanceof Error ? err.message : 'Ошибка при сохранении и подписании');
         } finally {
             setLoading(false);
         }
@@ -204,6 +231,13 @@ const AddShipmentPage = () => {
     return (
         <Box sx={{ p: 3 }}>
             <Typography variant="h4" gutterBottom>Добавление отгрузки</Typography>
+
+            {error && (
+                <Typography color="error" sx={{ mb: 2 }}>
+                    {error}
+                </Typography>
+            )}
+
             <Grid container spacing={2}>
                 {/* Номер документа */}
                 <Grid item xs={12} sm={6}>
@@ -212,15 +246,18 @@ const AddShipmentPage = () => {
                         value={formData.documentNumber}
                         onChange={handleDocumentNumberChange}
                         fullWidth
+                        error={!!error && !formData.documentNumber.trim()}
                     />
                 </Grid>
+
                 {/* Клиент */}
                 <Grid item xs={12} sm={6}>
                     <Select
-                        label="Клиент"
-                        value={formData.clientId}
+                        value={formData.clientId ?? ''}
                         onChange={handleClientChange}
+                        displayEmpty
                         fullWidth
+                        error={!!error && formData.clientId === null}
                     >
                         <MenuItem value="">Выберите клиента</MenuItem>
                         {clients.map(client => (
@@ -230,19 +267,21 @@ const AddShipmentPage = () => {
                         ))}
                     </Select>
                 </Grid>
+
                 {/* Дата */}
                 <Grid item xs={12} sm={6}>
                     <TextField
                         label="Дата"
                         type="date"
                         value={formData.date.toISOString().split('T')[0]}
-                        onChange={(e) => handleDateChange(e.target.value)}
+                        onChange={handleDateChange}
                         fullWidth
                         InputLabelProps={{ shrink: true }}
                     />
                 </Grid>
             </Grid>
-            {/* Таблица для добавления ресурсов */}
+
+            {/* Таблица ресурсов */}
             <TableContainer component={Paper} sx={{ mt: 2 }}>
                 <Table size="small">
                     <TableHead>
@@ -262,14 +301,16 @@ const AddShipmentPage = () => {
                                         color="error"
                                         onClick={() => handleRemoveItem(index)}
                                         disabled={formData.items.length === 1}
+                                        size="small"
                                     >
                                         ×
                                     </Button>
                                 </TableCell>
                                 <TableCell>
                                     <Select
-                                        value={item.resourceId.toString()}
-                                        onChange={(e) => handleResourceChange(index, e.target.value)}
+                                        value={item.resourceId || ''}
+                                        onChange={(e) => handleResourceChange(index, e.target.value as string)}
+                                        displayEmpty
                                         fullWidth
                                     >
                                         <MenuItem value="">Выберите ресурс</MenuItem>
@@ -282,11 +323,12 @@ const AddShipmentPage = () => {
                                 </TableCell>
                                 <TableCell>
                                     <Select
-                                        value={item.unitOfMeasureId.toString()}
-                                        onChange={(e) => handleUnitChange(index, e.target.value)}
+                                        value={item.unitOfMeasureId || ''}
+                                        onChange={(e) => handleUnitChange(index, e.target.value as string)}
+                                        displayEmpty
                                         fullWidth
                                     >
-                                        <MenuItem value="">Выберите единицу измерения</MenuItem>
+                                        <MenuItem value="">Выберите единицу</MenuItem>
                                         {units.map(unit => (
                                             <MenuItem key={unit.id} value={unit.id}>
                                                 {unit.name}
@@ -297,21 +339,23 @@ const AddShipmentPage = () => {
                                 <TableCell align="right">
                                     <TextField
                                         type="number"
-                                        value={item.quantity}
+                                        value={item.quantity || ''}
                                         onChange={(e) => handleQuantityChange(index, e.target.value)}
                                         fullWidth
+                                        size="small"
+                                        inputProps={{ min: 0 }}
                                     />
                                 </TableCell>
-                                <TableCell align="right">0</TableCell> {/* Здесь можно добавить логику для доступного количества */}
+                                <TableCell align="right">0</TableCell>
                             </TableRow>
                         ))}
-                        {/* Кнопка добавления нового ресурса */}
                         <TableRow>
                             <TableCell colSpan={5}>
                                 <Button
                                     variant="contained"
                                     color="success"
                                     onClick={handleAddItem}
+                                    size="small"
                                 >
                                     + Добавить ресурс
                                 </Button>
@@ -320,13 +364,14 @@ const AddShipmentPage = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
-            {/* Кнопки сохранения */}
+
+            {/* Кнопки */}
             <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
                 <Button
                     variant="contained"
-                    color="success"
+                    color="primary"
                     onClick={handleSubmit}
-                    disabled={!formData.documentNumber || !formData.clientId || formData.items.length === 0}
+                    disabled={loading}
                 >
                     Сохранить
                 </Button>
@@ -334,7 +379,7 @@ const AddShipmentPage = () => {
                     variant="contained"
                     color="success"
                     onClick={handleSubmitAndSign}
-                    disabled={!formData.documentNumber || !formData.clientId || formData.items.length === 0}
+                    disabled={loading}
                 >
                     Сохранить и подписать
                 </Button>

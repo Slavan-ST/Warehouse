@@ -62,9 +62,6 @@ namespace WarehouseAPI.Controllers
                 if (unit == null)
                     return NotFound("Единица измерения не найдена");
 
-                if (unit.Status == EntityStatus.Archived)
-                    return NotFound("Единица измерения архивирована");
-
                 return Ok(unit);
             }
             catch (Exception ex)

@@ -13,16 +13,19 @@ import {
     Grid,
     MenuItem,
     Select,
-    TableContainer, // Добавлен недостающий импорт
+    TableContainer,
 } from '@mui/material';
 import { format, isValid } from 'date-fns';
-import type { Resource, Unit } from '../api/warehouseApi';
-import { getResources, getUnits } from '../api/warehouseApi';
-import { createReceipt } from '../api/warehouseApi';
+import type { ResourceDto, UnitOfMeasureDto, CreateReceiptDocumentRequest } from '../api/warehouseApi';
+import {
+    getActiveResources,
+    getActiveUnits,
+} from '../api/warehouseApi';
+import { createReceipt} from '../api/warehouseApi';
 
 const AddReceiptPage = () => {
-    const [resources, setResources] = useState<Resource[]>([]);
-    const [units, setUnits] = useState<Unit[]>([]);
+    const [resources, setResources] = useState<ResourceDto[]>([]);
+    const [units, setUnits] = useState<UnitOfMeasureDto[]>([]);
 
     // Состояние для формы
     const [formData, setFormData] = useState({
@@ -35,15 +38,18 @@ const AddReceiptPage = () => {
         }[],
     });
 
-    // Загрузка справочников
+    // Загрузка справочников — только активные
     useEffect(() => {
         const loadReferences = async () => {
             try {
-                const [res, unt] = await Promise.all([getResources(), getUnits()]);
+                const [res, unt] = await Promise.all([
+                    getActiveResources(),
+                    getActiveUnits(),
+                ]);
                 setResources(res);
                 setUnits(unt);
 
-                // Опционально: добавить первый пустой элемент
+                // Добавить пустую строку, если есть данные
                 if (res.length > 0 && unt.length > 0) {
                     setFormData((prev) => ({
                         ...prev,
@@ -60,12 +66,10 @@ const AddReceiptPage = () => {
         loadReferences();
     }, []);
 
-    // Обработчик изменения номера документа
     const handleDocumentNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, documentNumber: e.target.value });
     };
 
-    // Обработчик изменения даты
     const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newValue = e.target.value;
         if (!newValue) return;
@@ -75,7 +79,6 @@ const AddReceiptPage = () => {
         }
     };
 
-    // Обработчик добавления нового ресурса
     const handleAddItem = () => {
         setFormData({
             ...formData,
@@ -86,7 +89,6 @@ const AddReceiptPage = () => {
         });
     };
 
-    // Обработчик удаления ресурса
     const handleRemoveItem = (index: number) => {
         if (formData.items.length <= 1) return;
         setFormData({
@@ -95,7 +97,6 @@ const AddReceiptPage = () => {
         });
     };
 
-    // Обработчик изменения ресурса
     const handleResourceChange = (index: number, value: string) => {
         const resourceId = value ? parseInt(value, 10) : 0;
         setFormData({
@@ -106,7 +107,6 @@ const AddReceiptPage = () => {
         });
     };
 
-    // Обработчик изменения единицы измерения
     const handleUnitChange = (index: number, value: string) => {
         const unitOfMeasureId = value ? parseInt(value, 10) : 0;
         setFormData({
@@ -117,10 +117,8 @@ const AddReceiptPage = () => {
         });
     };
 
-    // Обработчик изменения количества
     const handleQuantityChange = (index: number, value: string) => {
         const quantity = value === '' ? 0 : parseInt(value, 10);
-        // Проверка на NaN
         const safeQuantity = isNaN(quantity) ? 0 : quantity;
         setFormData({
             ...formData,
@@ -130,14 +128,12 @@ const AddReceiptPage = () => {
         });
     };
 
-    // Функция сохранения нового поступления
-    // Функция сохранения нового поступления
     const handleSubmit = async () => {
-        // Валидация формы
         if (!formData.documentNumber.trim()) {
             alert('Введите номер документа');
             return;
         }
+
         if (
             formData.items.length === 0 ||
             formData.items.some(
@@ -148,10 +144,9 @@ const AddReceiptPage = () => {
             return;
         }
 
-        // Подготовка данных для отправки
         const request: CreateReceiptDocumentRequest = {
             number: formData.documentNumber.trim(),
-            date: format(formData.date, 'yyyy-MM-dd'), // или formData.date.toISOString().split('T')[0]
+            date: format(formData.date, 'yyyy-MM-dd'),
             resources: formData.items.map(item => ({
                 resourceId: item.resourceId,
                 unitOfMeasureId: item.unitOfMeasureId,
@@ -163,8 +158,7 @@ const AddReceiptPage = () => {
             const result = await createReceipt(request);
             console.log('Поступление успешно создано:', result);
             alert('Поступление успешно сохранено!');
-            // Можно перенаправить на страницу поступлений
-            // например: navigate('/incomes');
+            // navigate('/incomes') — если нужно перенаправление
         } catch (err) {
             console.error('Ошибка сохранения поступления:', err);
             alert(err instanceof Error ? err.message : 'Ошибка при сохранении поступления');
@@ -178,7 +172,6 @@ const AddReceiptPage = () => {
             </Typography>
 
             <Grid container spacing={2}>
-                {/* Номер документа */}
                 <Grid item xs={12} sm={6}>
                     <TextField
                         label="Номер документа"
@@ -188,8 +181,6 @@ const AddReceiptPage = () => {
                         required
                     />
                 </Grid>
-
-                {/* Дата */}
                 <Grid item xs={12} sm={6}>
                     <TextField
                         label="Дата"
@@ -203,7 +194,6 @@ const AddReceiptPage = () => {
                 </Grid>
             </Grid>
 
-            {/* Таблица для добавления ресурсов */}
             <TableContainer component={Paper} sx={{ mt: 2 }}>
                 <Table size="small">
                     <TableHead>
@@ -283,7 +273,6 @@ const AddReceiptPage = () => {
                                 </TableRow>
                             ))
                         )}
-                        {/* Кнопка добавления нового ресурса */}
                         <TableRow>
                             <TableCell colSpan={4}>
                                 <Button
@@ -300,7 +289,6 @@ const AddReceiptPage = () => {
                 </Table>
             </TableContainer>
 
-            {/* Кнопка сохранения */}
             <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
                 <Button
                     variant="contained"

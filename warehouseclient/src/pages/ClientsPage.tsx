@@ -1,4 +1,6 @@
-﻿import { useState, useEffect } from 'react';
+﻿// src/pages/ClientsPage.tsx
+
+import { useState, useEffect } from 'react';
 import {
     Typography,
     Table,
@@ -14,46 +16,45 @@ import {
     Alert,
     Grid,
 } from '@mui/material';
-import { getClients } from '../api/warehouseApi';
-import type { Client } from '../api/warehouseApi';
 import { Link } from 'react-router-dom';
+
+// Обновлённые API-методы
+import { getActiveClients, getArchivedClients } from '../api/warehouseApi';
+import type { ClientDto as Client } from '../api/warehouseApi';
 
 const ClientsPage = () => {
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [view, setView] = useState<'active' | 'archive'>('active'); // Режим отображения
+    const [view, setView] = useState<'active' | 'archive'>('active');
 
+    // Загрузка клиентов в зависимости от режима
     useEffect(() => {
         const loadClients = async () => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await getClients();
+                const response = view === 'active'
+                    ? await getActiveClients()
+                    : await getArchivedClients();
                 setClients(response);
             } catch (err) {
-                console.error('Ошибка загрузки клиентов:', err);
-                setError('Не удалось загрузить клиентов. Пожалуйста, попробуйте позже.');
+                console.error(`Ошибка загрузки ${view === 'active' ? 'активных' : 'архивированных'} клиентов:`, err);
+                setError(
+                    view === 'active'
+                        ? 'Не удалось загрузить активных клиентов.'
+                        : 'Не удалось загрузить клиентов из архива.'
+                );
             } finally {
                 setLoading(false);
             }
         };
+
         loadClients();
-    }, []);
+    }, [view]); // Перезагрузка при смене режима
 
-    // Фильтрация по статусу: 0 = активный, 1 = архив
-    const filteredClients = clients.filter(client => {
-        const status = client.status ?? 0;
-        return view === 'active' ? status === 0 : status === 1;
-    });
-
-    const handleArchiveClick = () => {
-        setView('archive');
-    };
-
-    const handleActiveClick = () => {
-        setView('active');
-    };
+    const handleArchiveClick = () => setView('archive');
+    const handleActiveClick = () => setView('active');
 
     return (
         <Box sx={{ p: 3 }}>
@@ -108,8 +109,8 @@ const ClientsPage = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {filteredClients.length > 0 ? (
-                                filteredClients.map((client) => (
+                            {clients.length > 0 ? (
+                                clients.map((client) => (
                                     <TableRow
                                         key={client.id}
                                         component={Link}

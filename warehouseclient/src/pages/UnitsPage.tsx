@@ -14,32 +14,29 @@ import {
     Alert,
     Grid,
 } from '@mui/material';
-import { getUnits } from '../api/warehouseApi';
-import type { Unit } from '../api/warehouseApi';
+import { getActiveUnits, getArchivedUnits } from '../api/warehouseApi';
+import type { UnitOfMeasureDto } from '../api/warehouseApi';
 import { Link } from 'react-router-dom';
 
 const UnitsPage = () => {
-    const [units, setUnits] = useState<Unit[]>([]);
+    const [units, setUnits] = useState<UnitOfMeasureDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [view, setView] = useState<'active' | 'archive'>('active');
 
     useEffect(() => {
-        const loadUnits = async () => {
+        const load = async () => {
             try {
-                setLoading(true);
-                setError(null);
-                const response = await getUnits();
-                setUnits(response);
+                const data = view === 'active' ? await getActiveUnits() : await getArchivedUnits();
+                setUnits(data);
             } catch (err) {
-                console.error('Ошибка загрузки единиц измерения:', err);
-                setError('Не удалось загрузить единицы измерения. Пожалуйста, попробуйте позже.');
+                setError('Ошибка загрузки единиц измерения');
             } finally {
                 setLoading(false);
             }
         };
-        loadUnits();
-    }, []);
+        load();
+    }, [view]);
 
     const filteredUnits = units.filter(unit => {
         const status = unit.status ?? 0;

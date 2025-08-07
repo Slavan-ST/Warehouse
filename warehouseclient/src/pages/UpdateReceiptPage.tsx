@@ -14,16 +14,6 @@ import {
 import { getReceiptById, updateReceipt, archiveReceipt } from '../api/warehouseApi';
 import { useParams, useNavigate } from 'react-router-dom';
 
-interface Receipt {
-    id: number;
-    number: string;
-    date: string;
-    receiptResources: {
-        resourceId: number;
-        unitOfMeasureId: number;
-        quantity: number;
-    }[];
-}
 
 const UpdateReceiptPage = () => {
     const { id } = useParams<{ id: string }>();
