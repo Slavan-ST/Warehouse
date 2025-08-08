@@ -9,175 +9,134 @@ namespace WarehouseAPI.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // 1. Clients — вставляем по уникальному Number (или Name)
-            migrationBuilder.Sql(@"
-                IF NOT EXISTS (SELECT * FROM [Clients] WHERE [Name] = 'ООО ТехноПроект')
-                BEGIN
-                    INSERT INTO [Clients] ([Name], [Address], [Status]) VALUES
-                    ('ООО ТехноПроект', 'ул. Ленина, д. 10, Москва', 'Active')
-                END
-            ");
+            // 1. Clients
+            InsertIfNotExists(migrationBuilder,
+                "Clients",
+                new[] { "Name", "Address", "Status" },
+                new object[] { "ООО ТехноПроект", "ул. Ленина, д. 10, Москва", "Active" });
 
-            migrationBuilder.Sql(@"
-                IF NOT EXISTS (SELECT * FROM [Clients] WHERE [Name] = 'ИП Сидоров')
-                BEGIN
-                    INSERT INTO [Clients] ([Name], [Address], [Status]) VALUES
-                    ('ИП Сидоров', 'пр. Мира, д. 5, Санкт-Петербург', 'Active')
-                END
-            ");
+            InsertIfNotExists(migrationBuilder,
+                "Clients",
+                new[] { "Name", "Address", "Status" },
+                new object[] { "ИП Сидоров", "пр. Мира, д. 5, Санкт-Петербург", "Active" });
 
-            migrationBuilder.Sql(@"
-                IF NOT EXISTS (SELECT * FROM [Clients] WHERE [Name] = 'АО СтройМастер')
-                BEGIN
-                    INSERT INTO [Clients] ([Name], [Address], [Status]) VALUES
-                    ('АО СтройМастер', 'ш. Энтузиастов, д. 15, Екатеринбург', 'Inactive')
-                END
-            ");
+            InsertIfNotExists(migrationBuilder,
+                "Clients",
+                new[] { "Name", "Address", "Status" },
+                new object[] { "АО СтройМастер", "ш. Энтузиастов, д. 15, Екатеринбург", "Inactive" });
 
             // 2. UnitsOfMeasure
-            migrationBuilder.Sql(@"
-                IF NOT EXISTS (SELECT * FROM [UnitsOfMeasure] WHERE [Name] = 'шт')
-                BEGIN
-                    INSERT INTO [UnitsOfMeasure] ([Name], [Status]) VALUES ('шт', 'Active')
-                END
-            ");
+            InsertIfNotExists(migrationBuilder,
+                "UnitsOfMeasure",
+                new[] { "Name", "Status" },
+                new object[] { "шт", "Active" });
 
-            migrationBuilder.Sql(@"
-                IF NOT EXISTS (SELECT * FROM [UnitsOfMeasure] WHERE [Name] = 'кг')
-                BEGIN
-                    INSERT INTO [UnitsOfMeasure] ([Name], [Status]) VALUES ('кг', 'Active')
-                END
-            ");
+            InsertIfNotExists(migrationBuilder,
+                "UnitsOfMeasure",
+                new[] { "Name", "Status" },
+                new object[] { "кг", "Active" });
 
-            migrationBuilder.Sql(@"
-                IF NOT EXISTS (SELECT * FROM [UnitsOfMeasure] WHERE [Name] = 'л')
-                BEGIN
-                    INSERT INTO [UnitsOfMeasure] ([Name], [Status]) VALUES ('л', 'Active')
-                END
-            ");
+            InsertIfNotExists(migrationBuilder,
+                "UnitsOfMeasure",
+                new[] { "Name", "Status" },
+                new object[] { "л", "Active" });
 
             // 3. Resources
-            foreach (var (name, status) in new[] { ("Болт М8", "Active"), ("Цемент М500", "Active"), ("Масло моторное 10W-40", "Active"), ("Кирпич красный", "Active") })
-            {
-                migrationBuilder.Sql($@"
-                    IF NOT EXISTS (SELECT * FROM [Resources] WHERE [Name] = '{name}')
-                    BEGIN
-                        INSERT INTO [Resources] ([Name], [Status]) VALUES ('{name}', '{status}')
-                    END
-                ");
-            }
+            InsertIfNotExists(migrationBuilder,
+                "Resources",
+                new[] { "Name", "Status" },
+                new object[] { "Болт М8", "Active" });
+
+            InsertIfNotExists(migrationBuilder,
+                "Resources",
+                new[] { "Name", "Status" },
+                new object[] { "Цемент М500", "Active" });
+
+            InsertIfNotExists(migrationBuilder,
+                "Resources",
+                new[] { "Name", "Status" },
+                new object[] { "Масло моторное 10W-40", "Active" });
+
+            InsertIfNotExists(migrationBuilder,
+                "Resources",
+                new[] { "Name", "Status" },
+                new object[] { "Кирпич красный", "Active" });
 
             // 4. ReceiptDocuments
-            migrationBuilder.Sql(@"
-                IF NOT EXISTS (SELECT * FROM [ReceiptDocuments] WHERE [Number] = 'PR-001')
-                BEGIN
-                    INSERT INTO [ReceiptDocuments] ([Number], [Date], [Status]) VALUES ('PR-001', '2024-01-10', 0)
-                END
-            ");
+            InsertIfNotExists(migrationBuilder,
+                "ReceiptDocuments",
+                new[] { "Number", "Date", "Status" },
+                new object[] { "PR-001", new DateTime(2024, 1, 10), 0 });
 
-            migrationBuilder.Sql(@"
-                IF NOT EXISTS (SELECT * FROM [ReceiptDocuments] WHERE [Number] = 'PR-002')
-                BEGIN
-                    INSERT INTO [ReceiptDocuments] ([Number], [Date], [Status]) VALUES ('PR-002', '2024-01-15', 1)
-                END
-            ");
+            InsertIfNotExists(migrationBuilder,
+                "ReceiptDocuments",
+                new[] { "Number", "Date", "Status" },
+                new object[] { "PR-002", new DateTime(2024, 1, 15), 1 });
 
-            // 5. ShipmentDocuments — зависит от Clients
+            // 5. ShipmentDocuments (зависит от Clients)
             migrationBuilder.Sql(@"
-                IF NOT EXISTS (SELECT * FROM [ShipmentDocuments] WHERE [Number] = 'SH-001')
+                IF NOT EXISTS (SELECT * FROM [ShipmentDocuments] WHERE [Number] = N'SH-001')
                 BEGIN
                     INSERT INTO [ShipmentDocuments] ([Number], [ClientId], [Date], [Status])
-                    SELECT 'SH-001', Id, '2024-01-12', 'Shipped'
-                    FROM [Clients] WHERE [Name] = 'ООО ТехноПроект'
+                    SELECT N'SH-001', Id, '2024-01-12', N'Shipped'
+                    FROM [Clients] WHERE [Name] = N'ООО ТехноПроект'
                 END
             ");
 
             migrationBuilder.Sql(@"
-                IF NOT EXISTS (SELECT * FROM [ShipmentDocuments] WHERE [Number] = 'SH-002')
+                IF NOT EXISTS (SELECT * FROM [ShipmentDocuments] WHERE [Number] = N'SH-002')
                 BEGIN
                     INSERT INTO [ShipmentDocuments] ([Number], [ClientId], [Date], [Status])
-                    SELECT 'SH-002', Id, '2024-01-18', 'Pending'
-                    FROM [Clients] WHERE [Name] = 'ИП Сидоров'
+                    SELECT N'SH-002', Id, '2024-01-18', N'Pending'
+                    FROM [Clients] WHERE [Name] = N'ИП Сидоров'
                 END
             ");
 
-            // 6. Balances — зависит от Resources и UnitsOfMeasure
+            // 6. Balances
             migrationBuilder.Sql(@"
                 IF NOT EXISTS (SELECT * FROM [Balances] b
                               JOIN [Resources] r ON b.ResourceId = r.Id
                               JOIN [UnitsOfMeasure] u ON b.UnitOfMeasureId = u.Id
-                              WHERE r.Name = 'Болт М8' AND u.Name = 'шт')
+                              WHERE r.Name = N'Болт М8' AND u.Name = N'шт')
                 BEGIN
                     INSERT INTO [Balances] ([ResourceId], [UnitOfMeasureId], [Quantity])
                     SELECT r.Id, u.Id, 1000.00
                     FROM [Resources] r, [UnitsOfMeasure] u
-                    WHERE r.Name = 'Болт М8' AND u.Name = 'шт'
+                    WHERE r.Name = N'Болт М8' AND u.Name = N'шт'
                 END
             ");
 
-            // Аналогично для других балансов...
-            // (Повтори для других пар Resource + Unit)
-
-            // 7. ReceiptResources — зависит от ReceiptDocuments, Resources, UnitsOfMeasure
+            // 7. ReceiptResources
             migrationBuilder.Sql(@"
                 IF NOT EXISTS (SELECT * FROM [ReceiptResources] rr
                               JOIN [ReceiptDocuments] rd ON rr.ReceiptDocumentId = rd.Id
                               JOIN [Resources] r ON rr.ResourceId = r.Id
-                              WHERE rd.Number = 'PR-001' AND r.Name = 'Болт М8')
+                              WHERE rd.Number = N'PR-001' AND r.Name = N'Болт М8')
                 BEGIN
                     INSERT INTO [ReceiptResources] ([ReceiptDocumentId], [ResourceId], [UnitOfMeasureId], [Quantity])
                     SELECT rd.Id, r.Id, u.Id, 500.00
                     FROM [ReceiptDocuments] rd, [Resources] r, [UnitsOfMeasure] u
-                    WHERE rd.Number = 'PR-001' AND r.Name = 'Болт М8' AND u.Name = 'шт'
+                    WHERE rd.Number = N'PR-001' AND r.Name = N'Болт М8' AND u.Name = N'шт'
                 END
             ");
-
-            // Продолжи аналогично для других записей...
 
             // 8. ShipmentResources
             migrationBuilder.Sql(@"
                 IF NOT EXISTS (SELECT * FROM [ShipmentResources] sr
                               JOIN [ShipmentDocuments] sd ON sr.ShipmentDocumentId = sd.Id
                               JOIN [Resources] r ON sr.ResourceId = r.Id
-                              WHERE sd.Number = 'SH-001' AND r.Name = 'Болт М8')
+                              WHERE sd.Number = N'SH-001' AND r.Name = N'Болт М8')
                 BEGIN
                     INSERT INTO [ShipmentResources] ([ShipmentDocumentId], [ResourceId], [UnitOfMeasureId], [Quantity])
                     SELECT sd.Id, r.Id, u.Id, 200.00
                     FROM [ShipmentDocuments] sd, [Resources] r, [UnitsOfMeasure] u
-                    WHERE sd.Number = 'SH-001' AND r.Name = 'Болт М8' AND u.Name = 'шт'
-                END
-            ");
-
-            migrationBuilder.Sql(@"
-                IF NOT EXISTS (SELECT * FROM [ShipmentResources] sr
-                              JOIN [ShipmentDocuments] sd ON sr.ShipmentDocumentId = sd.Id
-                              JOIN [Resources] r ON sr.ResourceId = r.Id
-                              WHERE sd.Number = 'SH-001' AND r.Name = 'Масло моторное 10W-40')
-                BEGIN
-                    INSERT INTO [ShipmentResources] ([ShipmentDocumentId], [ResourceId], [UnitOfMeasureId], [Quantity])
-                    SELECT sd.Id, r.Id, u.Id, 50.00
-                    FROM [ShipmentDocuments] sd, [Resources] r, [UnitsOfMeasure] u
-                    WHERE sd.Number = 'SH-001' AND r.Name = 'Масло моторное 10W-40' AND u.Name = 'кг'
-                END
-            ");
-
-            migrationBuilder.Sql(@"
-                IF NOT EXISTS (SELECT * FROM [ShipmentResources] sr
-                              JOIN [ShipmentDocuments] sd ON sr.ShipmentDocumentId = sd.Id
-                              JOIN [Resources] r ON sr.ResourceId = r.Id
-                              WHERE sd.Number = 'SH-002' AND r.Name = 'Цемент М500')
-                BEGIN
-                    INSERT INTO [ShipmentResources] ([ShipmentDocumentId], [ResourceId], [UnitOfMeasureId], [Quantity])
-                    SELECT sd.Id, r.Id, u.Id, 100.00
-                    FROM [ShipmentDocuments] sd, [Resources] r, [UnitsOfMeasure] u
-                    WHERE sd.Number = 'SH-002' AND r.Name = 'Цемент М500' AND u.Name = 'кг'
+                    WHERE sd.Number = N'SH-001' AND r.Name = N'Болт М8' AND u.Name = N'шт'
                 END
             ");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Удаляем в обратном порядке
             migrationBuilder.Sql("DELETE FROM [ShipmentResources]");
             migrationBuilder.Sql("DELETE FROM [ReceiptResources]");
             migrationBuilder.Sql("DELETE FROM [Balances]");
@@ -186,6 +145,47 @@ namespace WarehouseAPI.Migrations
             migrationBuilder.Sql("DELETE FROM [Resources]");
             migrationBuilder.Sql("DELETE FROM [UnitsOfMeasure]");
             migrationBuilder.Sql("DELETE FROM [Clients]");
+        }
+
+        /// <summary>
+        /// Вспомогательный метод для вставки, если запись с таким ключом отсутствует.
+        /// </summary>
+        private void InsertIfNotExists(MigrationBuilder builder, string tableName, string[] columns, object[] values)
+        {
+            if (columns.Length != values.Length)
+                throw new ArgumentException("Columns count must be equal to values count.");
+
+            string whereColumn = columns[0];
+            object whereValue = values[0];
+
+            // Преобразуем значения в строку для SQL
+            string ValuesToSql()
+            {
+                string result = "";
+                for (int i = 0; i < columns.Length; i++)
+                {
+                    object val = values[i];
+                    if (val is string)
+                        result += $"N'{val}'";
+                    else if (val is DateTime dt)
+                        result += $"'{dt:yyyy-MM-dd}'";
+                    else
+                        result += val.ToString();
+
+                    if (i < columns.Length - 1)
+                        result += ", ";
+                }
+                return result;
+            }
+
+            string sql = $@"
+                IF NOT EXISTS (SELECT 1 FROM [{tableName}] WHERE [{whereColumn}] = N'{whereValue}')
+                BEGIN
+                    INSERT INTO [{tableName}] ([{string.Join("],[", columns)}]) VALUES ({ValuesToSql()})
+                END
+            ";
+
+            builder.Sql(sql);
         }
     }
 }
