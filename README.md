@@ -19,3 +19,13 @@ docker-compose up --build
 
 
 
+
+З.Ы. 
+
+пока рефакторю
+
+поправить строку подключения к БД в "Warehouse\WarehouseAPI\appsettings.json" для Docker на "Server=db;Database=Warehouse;User=sa;Password=YourStrong@Pass123;TrustServerCertificate=True; 
+
+или на свою если сервер отличается, в остальном миграции автоматически применятся - создание БД и тестовые данные
+
+
