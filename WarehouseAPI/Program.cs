@@ -1,11 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-using System.Reflection;
 using System.Text.Json.Serialization;
-using TechTalk.SpecFlow.Assist;
 using WarehouseAPI.Data;
 using WarehouseAPI.Services;
-using AutoMapper;
 using WarehouseAPI.Mapping;
 
 namespace WarehouseAPI
@@ -14,93 +11,101 @@ namespace WarehouseAPI
     {
         public static void Main(string[] args)
         {
-            var builder = WebApplication.CreateBuilder(args);
-
-            builder.Services.AddSwaggerGen(c =>
+            try
             {
-                c.SwaggerDoc("v1", new OpenApiInfo
+                var builder = WebApplication.CreateBuilder(args);
+
+                builder.Services.AddSwaggerGen(c =>
                 {
-                    Title = "Warehouse API",
-                    Version = "v1",
-                    Description = "API управления складом",
-                    Contact = new OpenApiContact
+                    c.SwaggerDoc("v1", new OpenApiInfo
                     {
-                        Name = "Slavan",
-                        Email = "support@yourcompany.com"
-                    }
+                        Title = "Warehouse API",
+                        Version = "v1",
+                        Description = "API управления складом",
+                        Contact = new OpenApiContact
+                        {
+                            Name = "Slavan",
+                            Email = "support@yourcompany.com"
+                        }
+                    });
+
+                    c.UseInlineDefinitionsForEnums();
                 });
 
-                c.UseInlineDefinitionsForEnums();
-            });
-
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("AllowAll", policy =>
+                builder.Services.AddCors(options =>
                 {
-                    policy.AllowAnyOrigin()
-                          .AllowAnyMethod()
-                          .AllowAnyHeader();
-                });
-            });
-
-            builder.Services
-                .AddControllers()
-                .AddJsonOptions(options =>
-                {
-                    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+                    options.AddPolicy("AllowAll", policy =>
+                    {
+                        policy.AllowAnyOrigin()
+                              .AllowAnyMethod()
+                              .AllowAnyHeader();
+                    });
                 });
 
-            builder.Services.AddAutoMapper(typeof(MappingProfile));
+                builder.Services
+                    .AddControllers()
+                    .AddJsonOptions(options =>
+                    {
+                        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+                        options.JsonSerializerOptions.Encoder =
+                            System.Text.Encodings.Web.JavaScriptEncoder.Create(System.Text.Unicode.UnicodeRanges.All);
+                    });
 
-            builder.Services.AddDbContext<AppDbContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+                builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-            builder.Services.AddScoped<ResourceService>();
-            builder.Services.AddScoped<UnitOfMeasureService>();
-            builder.Services.AddScoped<ClientService>();
-            builder.Services.AddScoped<ReceiptDocumentService>();
-            builder.Services.AddScoped<ShipmentDocumentService>();
-            builder.Services.AddScoped<BalanceService>();
+                builder.Services.AddDbContext<AppDbContext>(options =>
+                    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-            var app = builder.Build();
+                builder.Services.AddScoped<ResourceService>();
+                builder.Services.AddScoped<UnitOfMeasureService>();
+                builder.Services.AddScoped<ClientService>();
+                builder.Services.AddScoped<ReceiptDocumentService>();
+                builder.Services.AddScoped<ShipmentDocumentService>();
+                builder.Services.AddScoped<BalanceService>();
 
-            app.UseCors("AllowAll");
+                var app = builder.Build();
 
-            if (app.Environment.IsDevelopment())
-            {
-                //swagger должен быть тут (так как он для разработки), но для удобства проверки АПИ "на проде" вынес отсюда
-            }
+                app.UseCors("AllowAll");
 
-            app.Use((context, next) =>
-            {
-                if (context.Request.Path.StartsWithSegments("/swagger"))
+                app.UseSwagger();
+                app.UseSwaggerUI(c =>
                 {
-                    context.Response.Headers["Content-Type"] = "application/json; charset=utf-8";
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Warehouse API v1");
+                    c.RoutePrefix = "api-docs";
+                    c.DisplayOperationId();
+                    c.DisplayRequestDuration();
+                });
+
+                // Безопасный запуск миграций
+                try
+                {
+                    using var scope = app.Services.CreateScope();
+                    var services = scope.ServiceProvider;
+                    var context = services.GetRequiredService<AppDbContext>();
+                    context.Database.Migrate();
+                    Console.WriteLine("Миграции успешно применены.");
                 }
-                return next();
-            });
+                catch (Exception ex)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Ошибка при применении миграций:");
+                    Console.ResetColor();
+                    Console.WriteLine(ex);
+                }
 
-            app.UseSwagger();
-            app.UseSwaggerUI(c =>
-            {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Warehouse API v1");
-                c.RoutePrefix = "api-docs";
-                c.DisplayOperationId();
-                c.DisplayRequestDuration();
-            });
+                app.UseAuthorization();
 
-            using (var scope = app.Services.CreateScope())
-            {
-                var services = scope.ServiceProvider;
-                var context = services.GetRequiredService<AppDbContext>();
-                context.Database.Migrate();
+                app.MapControllers();
+
+                app.Run();
             }
-
-            app.UseAuthorization();
-
-            app.MapControllers();
-
-            app.Run();
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Критическая ошибка при запуске API:");
+                Console.ResetColor();
+                Console.WriteLine(ex);
+            }
         }
     }
 }

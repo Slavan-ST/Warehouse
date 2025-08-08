@@ -13,12 +13,10 @@ namespace WarehouseAPI.Services
 {
     public class ResourceService : BaseService<Resource>
     {
-        private readonly ILogger<ResourceService> _logger;
-
         public ResourceService(AppDbContext context, ILogger<ResourceService> logger)
             : base(context, logger)
         {
-            _logger = logger;
+
         }
 
         // WarehouseAPI/Services/ResourceService.cs

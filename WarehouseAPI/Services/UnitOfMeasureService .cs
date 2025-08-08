@@ -12,12 +12,11 @@ namespace WarehouseAPI.Services
 {
     public class UnitOfMeasureService : BaseService<UnitOfMeasure>
     {
-        private readonly ILogger<UnitOfMeasureService> _logger;
 
         public UnitOfMeasureService(AppDbContext context, ILogger<UnitOfMeasureService> logger)
             : base(context, logger)
         {
-            _logger = logger;
+
         }
 
         public async Task<Result<UnitOfMeasure>> CreateUnitAsync(string name)

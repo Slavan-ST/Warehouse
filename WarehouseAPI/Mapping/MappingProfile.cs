@@ -1,5 +1,4 @@
-﻿// Mapping/MappingProfile.cs
-using AutoMapper;
+﻿using AutoMapper;
 using WarehouseAPI.DTO;
 using WarehouseAPI.Models;
 

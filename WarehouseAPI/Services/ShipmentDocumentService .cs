@@ -12,12 +12,11 @@ namespace WarehouseAPI.Services
 {
     public class ShipmentDocumentService : BaseService<ShipmentDocument>
     {
-        private readonly ILogger<ShipmentDocumentService> _logger;
 
         public ShipmentDocumentService(AppDbContext context, ILogger<ShipmentDocumentService> logger)
             : base(context, logger)
         {
-            _logger = logger;
+
         }
 
         public async Task<Result<ShipmentDocument>> CreateShipmentWithResourcesAsync(

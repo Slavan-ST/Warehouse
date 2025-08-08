@@ -21,7 +21,6 @@ namespace WarehouseAPI.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Настройка enum преобразования
             modelBuilder.Entity<Resource>()
                 .Property(r => r.Status)
                 .HasConversion<string>();
@@ -39,7 +38,7 @@ namespace WarehouseAPI.Data
                 .HasConversion<string>();
             modelBuilder.Entity<Balance>()
         .Property(b => b.Quantity)
-        .HasPrecision(18, 4); // 18 цифр всего, 4 после запятой
+        .HasPrecision(18, 4);
 
             modelBuilder.Entity<ReceiptResource>()
                 .Property(r => r.Quantity)

@@ -20,9 +20,6 @@ namespace WarehouseAPI.Models
         [Required]
         [ForeignKey("UnitOfMeasure")]
         public int UnitOfMeasureId { get; set; }
-
-
-        [JsonIgnore]
         public UnitOfMeasure UnitOfMeasure { get; set; }
 
         [Required]

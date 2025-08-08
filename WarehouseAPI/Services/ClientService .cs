@@ -11,12 +11,10 @@ namespace WarehouseAPI.Services
 {
     public class ClientService : BaseService<Client>
     {
-        private readonly ILogger<ClientService> _logger;
-
         public ClientService(AppDbContext context, ILogger<ClientService> logger)
             : base(context, logger)
         {
-            _logger = logger;
+
         }
 
         public async Task<Result<Client>> CreateClientAsync(string name, string address)
@@ -177,15 +175,12 @@ namespace WarehouseAPI.Services
             }
         }
 
-        // Если нужно получить клиента с отгрузками (редкий случай)
         public async Task<Client?> GetClientWithShipmentsAsync(int id)
         {
             return await _context.Clients
                 .Include(c => c.ShipmentDocuments)
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
-
-        // ClientService.cs
 
         public async Task<Result> RestoreClientAsync(int id)
         {

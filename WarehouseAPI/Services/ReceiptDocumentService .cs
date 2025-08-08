@@ -13,12 +13,10 @@ namespace WarehouseAPI.Services
 {
     public class ReceiptDocumentService : BaseService<ReceiptDocument>
     {
-        private readonly ILogger<ReceiptDocumentService> _logger;
-
         public ReceiptDocumentService(AppDbContext context, ILogger<ReceiptDocumentService> logger)
             : base(context, logger)
         {
-            _logger = logger;
+
         }
 
         public async Task<Result<ReceiptDocument>> CreateReceiptWithResourcesAsync(

@@ -21,6 +21,13 @@ namespace WarehouseAPI.Controllers
             _logger = logger;
         }
 
+
+        [HttpGet("test")]
+        public IActionResult Test()
+        {
+            return Ok(new { Test = "Привет, мир!" });
+        }
+
         // GET: api/balance?resourceIds=1,2&unitIds=3,4
         [HttpGet]
         public async Task<IActionResult> GetBalances(

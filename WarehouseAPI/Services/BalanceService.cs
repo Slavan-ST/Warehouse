@@ -10,15 +10,12 @@ using WarehouseAPI.DTO;
 
 namespace WarehouseAPI.Services
 {
-    public class BalanceService
+    public class BalanceService : BaseService<Client>
     {
-        private readonly AppDbContext _context;
-        private readonly ILogger<BalanceService> _logger;
-
         public BalanceService(AppDbContext context, ILogger<BalanceService> logger)
+            : base(context, logger)
         {
-            _context = context;
-            _logger = logger;
+
         }
 
         public async Task<Result<List<BalanceDto>>> GetBalancesAsync()

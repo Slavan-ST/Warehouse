@@ -25,7 +25,6 @@ namespace WarehouseAPI.Models
         [Required]
         public ShipmentDocumentStatus Status { get; set; } = ShipmentDocumentStatus.Draft;
 
-
         public ICollection<ShipmentResource> ShipmentResources { get; set; }
     }
 }
