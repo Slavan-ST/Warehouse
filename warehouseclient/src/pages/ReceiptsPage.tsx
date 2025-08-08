@@ -275,7 +275,6 @@ const ReceiptsPage = () => {
                 <TableRow>
                   <TableCell>Номер</TableCell>
                   <TableCell align="right">Дата</TableCell>
-                  <TableCell align="right">Клиент</TableCell>
                   <TableCell align="right">Ресурс</TableCell>
                   <TableCell align="right">Единица измерения</TableCell>
                   <TableCell align="right">Количество</TableCell>
@@ -298,7 +297,6 @@ const ReceiptsPage = () => {
                         {item.documentNumber}
                       </TableCell>
                       <TableCell align="right">{item.date.split("T")[0]}</TableCell>
-                      <TableCell align="right">Ало бизнес</TableCell>
                       <TableCell align="right">{item.resourceName}</TableCell>
                       <TableCell align="right">{item.unitName}</TableCell>
                       <TableCell align="right">{item.quantity}</TableCell>
