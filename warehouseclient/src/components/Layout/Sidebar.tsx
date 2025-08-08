@@ -11,7 +11,7 @@ import { Link } from "react-router-dom";
 
 const menuItems = [
     { text: "Баланс", icon: <BalanceIcon />, path: "/balance" },
-    { text: "Поступления", icon: <IncomesIcon />, path: "/incomes" },
+    { text: "Поступления", icon: <IncomesIcon />, path: "/receipts" },
     { text: "Отгрузки", icon: <ShipmentsIcon />, path: "/shipments" },
     { text: "Клиенты", icon: <ClientsIcon />, path: "/clients" },
     { text: "Единицы измерения", icon: <UnitsIcon />, path: "/units" },

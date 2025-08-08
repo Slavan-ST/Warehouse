@@ -1,7 +1,7 @@
 ﻿import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout/Layout";
 import BalancePage from "./pages/BalancePage";
-import IncomesPage from "./pages/IncomesPage";
+import ReceiptsPage from "./pages/ReceiptsPage";
 import ShipmentsPage from "./pages/ShipmentsPage";
 import ClientsPage from "./pages/ClientsPage";
 import UnitsPage from "./pages/UnitsPage";
@@ -27,7 +27,7 @@ function App() {
 
                     {/* Основные разделы */}
                     <Route path="balance" element={<BalancePage />} />
-                    <Route path="incomes" element={<IncomesPage />} />
+                    <Route path="receipts" element={<ReceiptsPage />} />
                     <Route path="shipments" element={<ShipmentsPage />} />
 
                     {/* Клиенты */}
@@ -56,7 +56,7 @@ function App() {
                     <Route path="add-shipment" element={<AddShipmentPage />} />
 
                     <Route path="receipts">
-                        <Route index element={<IncomesPage />} />
+                        <Route index element={<ReceiptsPage />} />
                         <Route path="add" element={<AddReceiptPage />} />
                         <Route path=":id" element={<UpdateReceiptPage />} />
                     </Route>
