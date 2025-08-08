@@ -4,6 +4,8 @@
     {
         Draft,
         Signed,
-        Revoked
+        Revoked,
+        Pending,
+        Shipped
     }
 }
