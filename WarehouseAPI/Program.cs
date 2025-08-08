@@ -32,6 +32,7 @@ namespace WarehouseAPI
 
                 c.UseInlineDefinitionsForEnums();
             });
+
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAll", policy =>
@@ -41,22 +42,19 @@ namespace WarehouseAPI
                           .AllowAnyHeader();
                 });
             });
+
             builder.Services
                 .AddControllers()
                 .AddJsonOptions(options =>
-                 {
-                     options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-                 });
+                {
+                    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+                });
 
-
-
-            // Äîáàâëÿåì AutoMapper
             builder.Services.AddAutoMapper(typeof(MappingProfile));
 
+            builder.Services.AddDbContext<AppDbContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-            builder.Services.AddControllers();
-
-            builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
             builder.Services.AddScoped<ResourceService>();
             builder.Services.AddScoped<UnitOfMeasureService>();
             builder.Services.AddScoped<ClientService>();
@@ -64,15 +62,14 @@ namespace WarehouseAPI
             builder.Services.AddScoped<ShipmentDocumentService>();
             builder.Services.AddScoped<BalanceService>();
 
-
             var app = builder.Build();
 
             app.UseCors("AllowAll");
+
             if (app.Environment.IsDevelopment())
             {
-                
+                //swagger должен быть тут (так как он для разработки), но для удобства проверки АПИ "на проде" вынес отсюда
             }
-
 
             app.Use((context, next) =>
             {
@@ -83,30 +80,23 @@ namespace WarehouseAPI
                 return next();
             });
 
-
             app.UseSwagger();
-                app.UseSwaggerUI(c =>
-                {
-                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Warehouse API v1");
-                    c.RoutePrefix = "api-docs"; // Äîñòóï ïî /api-docs
-                    c.DisplayOperationId();
-                    c.DisplayRequestDuration();
-                });
-
-
-
-
-
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Warehouse API v1");
+                c.RoutePrefix = "api-docs";
+                c.DisplayOperationId();
+                c.DisplayRequestDuration();
+            });
 
             using (var scope = app.Services.CreateScope())
             {
                 var services = scope.ServiceProvider;
                 var context = services.GetRequiredService<AppDbContext>();
-                context.Database.Migrate(); // Ñîçäà¸ò ÁÄ è ïðèìåíÿåò ìèãðàöèè
+                context.Database.Migrate();
             }
 
             app.UseAuthorization();
-
 
             app.MapControllers();
 
