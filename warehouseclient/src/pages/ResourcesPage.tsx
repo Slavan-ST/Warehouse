@@ -14,12 +14,11 @@ import {
     Alert,
     Grid,
 } from '@mui/material';
-import { getActiveResources, getArchivedResources } from '../api/warehouseApi';
-import type { Resource } from '../api/warehouseApi';
+import { getActiveResources, getArchivedResources, type ResourceDto } from '../api/warehouseApi';
 import { Link } from 'react-router-dom';
 
 const ResourcesPage = () => {
-    const [resources, setResources] = useState<Resource[]>([]);
+    const [resources, setResources] = useState<ResourceDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [view, setView] = useState<'active' | 'archive'>('active');

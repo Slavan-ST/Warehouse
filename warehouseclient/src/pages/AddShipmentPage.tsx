@@ -308,31 +308,31 @@ const AddShipmentPage = () => {
                                 </TableCell>
                                 <TableCell>
                                     <Select
-                                        value={item.resourceId || ''}
-                                        onChange={(e) => handleResourceChange(index, e.target.value as string)}
+                                        value={item.resourceId ? String(item.resourceId) : ''}
+                                        onChange={(e) => handleResourceChange(index, e.target.value)}
                                         displayEmpty
                                         fullWidth
                                     >
                                         <MenuItem value="">Выберите ресурс</MenuItem>
                                         {resources.map(resource => (
-                                            <MenuItem key={resource.id} value={resource.id}>
-                                                {resource.name}
-                                            </MenuItem>
+                                        <MenuItem key={resource.id} value={String(resource.id)}>
+                                            {resource.name}
+                                        </MenuItem>
                                         ))}
                                     </Select>
-                                </TableCell>
-                                <TableCell>
+                                    </TableCell>
+                                    <TableCell>
                                     <Select
-                                        value={item.unitOfMeasureId || ''}
-                                        onChange={(e) => handleUnitChange(index, e.target.value as string)}
+                                        value={item.unitOfMeasureId ? String(item.unitOfMeasureId) : ''}
+                                        onChange={(e) => handleUnitChange(index, e.target.value)}
                                         displayEmpty
                                         fullWidth
                                     >
                                         <MenuItem value="">Выберите единицу</MenuItem>
                                         {units.map(unit => (
-                                            <MenuItem key={unit.id} value={unit.id}>
-                                                {unit.name}
-                                            </MenuItem>
+                                        <MenuItem key={unit.id} value={String(unit.id)}>
+                                            {unit.name}
+                                        </MenuItem>
                                         ))}
                                     </Select>
                                 </TableCell>

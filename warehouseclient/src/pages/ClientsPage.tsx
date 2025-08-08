@@ -13,7 +13,7 @@ import {
     Button,
     CircularProgress,
     Alert,
-} from '@mui/material'; // Убрали Grid из импорта
+} from '@mui/material';
 import { Link } from 'react-router-dom';
 
 import { getActiveClients, getArchivedClients } from '../api/warehouseApi';

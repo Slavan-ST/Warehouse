@@ -20,16 +20,15 @@ import {
     InputLabel,
     FormControl,
     Select,
-    FormHelperText,
 } from '@mui/material';
 import { getShipments, getResources, getUnits, getClients } from '../api/warehouseApi';
-import type { ShipmentItem, Resource, Unit } from '../api/warehouseApi';
+import type { ResourceDto, ShipmentItem, UnitOfMeasureDto} from '../api/warehouseApi';
 import { Link } from 'react-router-dom';
 
 const ShipmentsPage = () => {
     const [shipments, setShipments] = useState<ShipmentItem[]>([]);
-    const [resources, setResources] = useState<Resource[]>([]);
-    const [units, setUnits] = useState<Unit[]>([]);
+    const [resources, setResources] = useState<ResourceDto[]>([]);
+    const [units, setUnits] = useState<UnitOfMeasureDto[]>([]);
     const [clients, setClients] = useState<{ id: number; name: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);

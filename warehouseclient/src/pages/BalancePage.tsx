@@ -15,19 +15,13 @@ import {
     CircularProgress,
     Alert
 } from '@mui/material';
-import { getBalances, getResources, getUnits } from '../api/warehouseApi';
-import type { BalanceItem, ResourceDTO, UnitOfMeasureDto } from '../api/warehouseApi';
+import { getBalances, getResources, getUnits, type BalanceDto, type ResourceDto, type UnitOfMeasureDto } from '../api/warehouseApi';
 
-// Интерфейс для строки баланса с именами
-interface BalanceViewItem extends BalanceItem {
-    resourceName: string;
-    unitName: string;
-}
 
 const BalancePage = () => {
-    const [balances, setBalances] = useState<BalanceViewItem[]>([]);
-    const [resources, setResources] = useState<Resource[]>([]);
-    const [units, setUnits] = useState<Unit[]>([]);
+    const [balances, setBalances] = useState<BalanceDto[]>([]);
+    const [resources, setResources] = useState<ResourceDto[]>([]);
+    const [units, setUnits] = useState<UnitOfMeasureDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [resourceFilter, setResourceFilter] = useState<number[]>([]);
@@ -67,7 +61,7 @@ const BalancePage = () => {
                 );
 
                 // Добавляем имена ресурсов и единиц измерения
-                const enrichedBalances: BalanceViewItem[] = rawBalances.map(item => ({
+                const enrichedBalances: BalanceDto[] = rawBalances.map(item => ({
                     ...item,
                     resourceName: resources.find(r => r.id === item.resourceId)?.name || 'Неизвестно',
                     unitName: units.find(u => u.id === item.unitOfMeasureId)?.name || 'Неизвестно'

@@ -11,7 +11,7 @@ import {
     TableHead,
     TableRow,
 } from '@mui/material';
-import { getShipmentById, updateShipment, archiveShipment } from '../api/warehouseApi';
+import { getShipmentById, updateShipment, archiveShipment, type ClientDto } from '../api/warehouseApi';
 import { useParams, useNavigate } from 'react-router-dom';
 
 const UpdateShipmentPage = () => {
