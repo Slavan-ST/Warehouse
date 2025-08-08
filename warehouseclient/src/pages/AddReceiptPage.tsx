@@ -10,11 +10,11 @@ import {
     TableHead,
     TableRow,
     Paper,
-    Grid,
     MenuItem,
     Select,
     TableContainer,
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
 import { format, isValid } from 'date-fns';
 import type { ResourceDto, UnitOfMeasureDto, CreateReceiptDocumentRequest } from '../api/warehouseApi';
 import {
@@ -172,7 +172,7 @@ const AddReceiptPage = () => {
             </Typography>
 
             <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={6} component="div">
                     <TextField
                         label="Номер документа"
                         value={formData.documentNumber}
@@ -181,7 +181,7 @@ const AddReceiptPage = () => {
                         required
                     />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={6} component="div">
                     <TextField
                         label="Дата"
                         type="date"
@@ -228,7 +228,7 @@ const AddReceiptPage = () => {
                                         <Select
                                             value={item.resourceId || ''}
                                             onChange={(e) =>
-                                                handleResourceChange(index, e.target.value as string)
+                                                handleResourceChange(index, String(e.target.value))
                                             }
                                             displayEmpty
                                             fullWidth
@@ -245,7 +245,7 @@ const AddReceiptPage = () => {
                                         <Select
                                             value={item.unitOfMeasureId || ''}
                                             onChange={(e) =>
-                                                handleUnitChange(index, e.target.value as string)
+                                                handleUnitChange(index, String(e.target.value))
                                             }
                                             displayEmpty
                                             fullWidth

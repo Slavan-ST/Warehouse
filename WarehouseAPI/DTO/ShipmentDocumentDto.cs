@@ -5,11 +5,11 @@ namespace WarehouseAPI.DTO
     public record ShipmentDocumentDto
     {
         public int Id { get; init; }
-        public string Number { get; init; }
+        public string Number { get; init; } = string.Empty;
         public DateTime Date { get; init; }
         public ShipmentDocumentStatus Status { get; init; }
-        public ClientDto Client { get; init; }
-        public List<ShipmentResourceDto> ShipmentResources { get; init; }
+        public ClientDto Client { get; init; } = null!;
+        public List<ShipmentResourceDto> ShipmentResources { get; init; } = null!;
 
         public ShipmentDocumentDto() { }
 

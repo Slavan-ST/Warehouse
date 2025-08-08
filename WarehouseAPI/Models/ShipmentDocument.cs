@@ -12,12 +12,12 @@ namespace WarehouseAPI.Models
 
         [Required]
         [StringLength(50)]
-        public string Number { get; set; }
+        public string Number { get; set; } = string.Empty;
 
         [Required]
         [ForeignKey("Client")]
         public int ClientId { get; set; }
-        public Client Client { get; set; }
+        public Client Client { get; set; } = null!;
 
         [Required]
         public DateTime Date { get; set; }
@@ -25,6 +25,6 @@ namespace WarehouseAPI.Models
         [Required]
         public ShipmentDocumentStatus Status { get; set; } = ShipmentDocumentStatus.Draft;
 
-        public ICollection<ShipmentResource> ShipmentResources { get; set; }
+        public ICollection<ShipmentResource> ShipmentResources { get; set; } = null!;
     }
 }

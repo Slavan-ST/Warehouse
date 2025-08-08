@@ -80,7 +80,7 @@ namespace WarehouseAPI.Controllers
             var result = await _resourceService.CreateResourceAsync(request);
             if (result.IsSuccess)
             {
-                return Ok(result.Value); // Assuming you return the created resource
+                return Ok(result.Value);
             }
 
             return BadRequest(new { message = result.Error });
@@ -172,7 +172,7 @@ namespace WarehouseAPI.Controllers
         {
             try
             {
-                var resources = await _resourceService.GetArchivedResourcesAsync(); // Нужно добавить в сервис
+                var resources = await _resourceService.GetArchivedResourcesAsync();
                 return Ok(resources);
             }
             catch (Exception ex)

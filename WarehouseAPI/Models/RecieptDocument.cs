@@ -11,7 +11,7 @@ namespace WarehouseAPI.Models
 
         [Required]
         [StringLength(50)]
-        public string Number { get; set; }
+        public string Number { get; set; } = string.Empty;
 
         [Required]
         public DateTime Date { get; set; }
@@ -19,6 +19,6 @@ namespace WarehouseAPI.Models
         [Required]
         public EntityStatus Status { get; set; } = EntityStatus.Active;
 
-        public ICollection<ReceiptResource> ReceiptResources { get; set; }
+        public ICollection<ReceiptResource> ReceiptResources { get; set; } = null!;
     }
 }

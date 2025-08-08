@@ -16,7 +16,7 @@ import {
     Alert
 } from '@mui/material';
 import { getBalances, getResources, getUnits } from '../api/warehouseApi';
-import type { BalanceItem, Resource, Unit } from '../api/warehouseApi';
+import type { BalanceItem, ResourceDTO, UnitOfMeasureDto } from '../api/warehouseApi';
 
 // Интерфейс для строки баланса с именами
 interface BalanceViewItem extends BalanceItem {

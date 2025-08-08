@@ -15,12 +15,12 @@ namespace WarehouseAPI.Models
 
 
         [JsonIgnore]
-        public Resource Resource { get; set; }
+        public Resource Resource { get; set; } = null!;
 
         [Required]
         [ForeignKey("UnitOfMeasure")]
         public int UnitOfMeasureId { get; set; }
-        public UnitOfMeasure UnitOfMeasure { get; set; }
+        public UnitOfMeasure UnitOfMeasure { get; set; } = null!;
 
         [Required]
         public decimal Quantity { get; set; }

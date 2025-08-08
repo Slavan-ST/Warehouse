@@ -1,5 +1,4 @@
-﻿// src/pages/ClientsPage.tsx
-
+﻿
 import { useState, useEffect } from 'react';
 import {
     Typography,
@@ -14,11 +13,9 @@ import {
     Button,
     CircularProgress,
     Alert,
-    Grid,
-} from '@mui/material';
+} from '@mui/material'; // Убрали Grid из импорта
 import { Link } from 'react-router-dom';
 
-// Обновлённые API-методы
 import { getActiveClients, getArchivedClients } from '../api/warehouseApi';
 import type { ClientDto as Client } from '../api/warehouseApi';
 
@@ -28,7 +25,6 @@ const ClientsPage = () => {
     const [error, setError] = useState<string | null>(null);
     const [view, setView] = useState<'active' | 'archive'>('active');
 
-    // Загрузка клиентов в зависимости от режима
     useEffect(() => {
         const loadClients = async () => {
             try {
@@ -51,7 +47,7 @@ const ClientsPage = () => {
         };
 
         loadClients();
-    }, [view]); // Перезагрузка при смене режима
+    }, [view]);
 
     const handleArchiveClick = () => setView('archive');
     const handleActiveClick = () => setView('active');
@@ -61,39 +57,34 @@ const ClientsPage = () => {
             <Typography variant="h4" gutterBottom>Клиенты</Typography>
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item>
-                    <Button
-                        variant="outlined"
-                        color="success"
-                        disabled={loading}
-                        component={Link}
-                        to="/clients/add"
-                    >
-                        Добавить
-                    </Button>
-                </Grid>
-                <Grid item>
-                    <Button
-                        variant={view === 'active' ? 'outlined' : 'contained'}
-                        color="warning"
-                        onClick={handleArchiveClick}
-                        disabled={loading}
-                    >
-                        К архиву
-                    </Button>
-                </Grid>
-                <Grid item>
-                    <Button
-                        variant={view === 'active' ? 'contained' : 'outlined'}
-                        color="primary"
-                        onClick={handleActiveClick}
-                        disabled={loading}
-                    >
-                        Активные
-                    </Button>
-                </Grid>
-            </Grid>
+            {/* Используем Box вместо Grid */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <Button
+                    variant="outlined"
+                    color="success"
+                    disabled={loading}
+                    component={Link}
+                    to="/clients/add"
+                >
+                    Добавить
+                </Button>
+                <Button
+                    variant={view === 'active' ? 'outlined' : 'contained'}
+                    color="warning"
+                    onClick={handleArchiveClick}
+                    disabled={loading}
+                >
+                    К архиву
+                </Button>
+                <Button
+                    variant={view === 'active' ? 'contained' : 'outlined'}
+                    color="primary"
+                    onClick={handleActiveClick}
+                    disabled={loading}
+                >
+                    Активные
+                </Button>
+            </Box>
 
             {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>

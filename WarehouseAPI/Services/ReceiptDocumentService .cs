@@ -204,7 +204,6 @@ namespace WarehouseAPI.Services
             }
         }
 
-        // Опционально: если нужно только для фильтрации
         public async Task<List<string>> GetDocumentNumbersAsync()
         {
             try
@@ -222,10 +221,10 @@ namespace WarehouseAPI.Services
         }
 
         public async Task<Result<ReceiptDocumentDto>> UpdateReceiptDocumentAsync(
-    int id,
-    string number,
-    DateTime date,
-    List<CreateReceiptResourceRequest> resources)
+            int id,
+            string number,
+            DateTime date,
+            List<CreateReceiptResourceRequest> resources)
         {
             if (string.IsNullOrWhiteSpace(number))
                 return Result.Failure<ReceiptDocumentDto>("Номер документа не может быть пустым");
@@ -240,18 +239,15 @@ namespace WarehouseAPI.Services
             if (document == null)
                 return Result.Failure<ReceiptDocumentDto>("Документ не найден");
 
-            // Проверка: только черновики (Active) можно редактировать
             if (document.Status != EntityStatus.Active)
                 return Result.Failure<ReceiptDocumentDto>("Обновление возможно только для черновиков");
 
-            // Проверка уникальности номера
             if (await _context.ReceiptDocuments
                 .AnyAsync(rd => rd.Number == number && rd.Id != id))
             {
                 return Result.Failure<ReceiptDocumentDto>("Документ с таким номером уже существует");
             }
 
-            // Валидация ресурсов и единиц измерения
             foreach (var rr in resources)
             {
                 var resource = await _context.Resources.FindAsync(rr.ResourceId);
@@ -268,15 +264,12 @@ namespace WarehouseAPI.Services
 
             try
             {
-                // Обновляем заголовок
                 document.Number = number;
                 document.Date = date;
 
-                // Удаляем старые ресурсы
                 _context.ReceiptResources.RemoveRange(document.ReceiptResources);
                 await _context.SaveChangesAsync();
 
-                // Добавляем новые
                 document.ReceiptResources = resources.Select(r => new ReceiptResource
                 {
                     ReceiptDocumentId = document.Id,
@@ -287,12 +280,10 @@ namespace WarehouseAPI.Services
 
                 await _context.SaveChangesAsync();
 
-                // Сохраняем и коммитим транзакцию
                 await transaction.CommitAsync();
 
                 _logger.LogInformation("Документ поступления с ID {DocumentId} обновлён", id);
 
-                // Возвращаем DTO
                 var dto = new ReceiptDocumentDto(
                     document.Id,
                     document.Number,

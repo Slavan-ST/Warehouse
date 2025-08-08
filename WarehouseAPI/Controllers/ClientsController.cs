@@ -71,11 +71,9 @@ namespace WarehouseAPI.Controllers
 
             try
             {
-                // Передаем только нужные поля в сервис
                 var result = await _clientService.CreateClientAsync(request.Name, request.Address);
                 if (result.IsSuccess)
                 {
-                    // Возвращаем полный Dto, созданный сервисом
                     return CreatedAtAction(nameof(GetClient), new { id = result.Value.Id }, result.Value);
                 }
                 return BadRequest(new { message = result.Error });

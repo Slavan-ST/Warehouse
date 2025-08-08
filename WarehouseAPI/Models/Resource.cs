@@ -11,12 +11,12 @@ namespace WarehouseAPI.Models
 
         [Required]
         [StringLength(255)]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         [Required]
         public EntityStatus Status { get; set; } = EntityStatus.Active;
-        public ICollection<Balance> Balances { get; set; }
-        public ICollection<ReceiptResource> ReceiptResources { get; set; }
-        public ICollection<ShipmentResource> ShipmentResources { get; set; }
+        public ICollection<Balance> Balances { get; set; } = null!;
+        public ICollection<ReceiptResource> ReceiptResources { get; set; } = null!;
+        public ICollection<ShipmentResource> ShipmentResources { get; set; } = null!;
     }
 }

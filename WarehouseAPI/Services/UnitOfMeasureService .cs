@@ -50,7 +50,7 @@ namespace WarehouseAPI.Services
                 return Result.Failure("Единица измерения не найдена");
 
             if (unit.Status == EntityStatus.Archived)
-                return Result.Success(); // Идемпотентность
+                return Result.Success();
 
             var isUsed = await IsUsedInRelationships(id,
                 _context.Balances.Where(b => b.UnitOfMeasureId == id),
@@ -82,7 +82,7 @@ namespace WarehouseAPI.Services
                 return Result.Failure("Единица измерения не найдена");
 
             if (unit.Status == EntityStatus.Active)
-                return Result.Success(); // Идемпотентность
+                return Result.Success();
 
             unit.Status = EntityStatus.Active;
 

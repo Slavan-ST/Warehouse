@@ -81,7 +81,6 @@ namespace WarehouseAPI.Controllers
 
             try
             {
-                // Передаем только нужное поле в сервис
                 var result = await _unitService.CreateUnitAsync(request.Name);
                 if (result.IsSuccess)
                 {

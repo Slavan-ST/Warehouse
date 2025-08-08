@@ -198,11 +198,11 @@ namespace WarehouseAPI.Controllers
 
                 var existing = existingResult.Value;
 
-                // Проверяем, что документ — черновик
+
                 if (existing.Status != ShipmentDocumentStatus.Draft)
                     return BadRequest("Обновление возможно только для черновиков");
 
-                // Проверяем уникальность номера (исключая текущий документ)
+
                 if (await _shipmentService.DocumentNumberExistsAsync(request.Number, id))
                     return BadRequest("Документ с таким номером уже существует");
 

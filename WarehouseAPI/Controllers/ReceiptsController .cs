@@ -170,7 +170,7 @@ namespace WarehouseAPI.Controllers
                 );
 
                 if (result.IsSuccess)
-                    return NoContent(); // или Ok(result.Value), если хочешь вернуть обновлённый объект
+                    return NoContent();
 
                 return BadRequest(new { message = result.Error });
             }

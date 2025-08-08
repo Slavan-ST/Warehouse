@@ -1,6 +1,4 @@
-﻿// src/api/warehouseApi.ts
-// src/api/warehouseApi.ts
-import axios, { AxiosError } from 'axios';
+﻿import axios, { AxiosError } from 'axios';
 
 const api = axios.create({
     baseURL: 'http://localhost:5130/api/',
@@ -74,7 +72,9 @@ export interface ShipmentDocumentDto {
     shipmentResources: ShipmentResourceDto[];
 }
 
-// --- Формы ---
+
+
+
 export interface CreateResourceRequest {
     name: string;
 }
@@ -109,7 +109,9 @@ export interface CreateShipmentDocumentRequest {
     }[];
 }
 
-// --- Плоские представления для таблиц ---
+
+
+
 export interface ReceiptItem {
     documentId: number;
     documentNumber: string;
@@ -147,7 +149,8 @@ export const getResources = async (): Promise<ResourceDto[]> => {
     }
 };
 
-// Получить все активные единицы измерения
+
+
 export const getUnits = async (): Promise<UnitOfMeasureDto[]> => {
     try {
         const response = await api.get<UnitOfMeasureDto[]>('/units');
@@ -158,7 +161,9 @@ export const getUnits = async (): Promise<UnitOfMeasureDto[]> => {
     }
 };
 
-// Получить всех активных клиентов
+
+
+
 export const getClients = async (): Promise<ClientDto[]> => {
     try {
         const response = await api.get<ClientDto[]>('/clients');
@@ -303,13 +308,11 @@ export const getReceipts = async (
         const response = await api.get<ReceiptDocumentDto[]>('/receipts', { params });
         const documents = response.data;
 
-        const [resources, units] = await Promise.all([getResources(), getUnits()]);
 
         const items: ReceiptItem[] = [];
         documents.forEach(doc => {
             doc.receiptResources.forEach(rr => {
                 items.push({
-                    id: doc.id,
                     documentId: doc.id,
                     documentNumber: doc.number,
                     date: doc.date,
@@ -424,7 +427,7 @@ export const getShipments = async (
         const response = await api.get<ShipmentDocumentDto[]>('/shipments', { params });
         const documents = response.data;
 
-        const [resources, units] = await Promise.all([getResources(), getUnits()]);
+
 
         const items: ShipmentItem[] = [];
         documents.forEach(doc => {
@@ -437,7 +440,6 @@ export const getShipments = async (
 
             doc.shipmentResources.forEach(sr => {
                 items.push({
-                    id: doc.id,
                     documentId: doc.id,
                     documentNumber: doc.number,
                     date: doc.date,

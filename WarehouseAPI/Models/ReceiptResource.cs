@@ -12,17 +12,17 @@ namespace WarehouseAPI.Models
         [Required]
         [ForeignKey("ReceiptDocument")]
         public int ReceiptDocumentId { get; set; }
-        public ReceiptDocument ReceiptDocument { get; set; }
+        public ReceiptDocument ReceiptDocument { get; set; } = null!;
 
         [Required]
         [ForeignKey("Resource")]
         public int ResourceId { get; set; }
-        public Resource Resource { get; set; }
+        public Resource Resource { get; set; } = null!;
 
         [Required]
         [ForeignKey("UnitOfMeasure")]
         public int UnitOfMeasureId { get; set; }
-        public UnitOfMeasure UnitOfMeasure { get; set; }
+        public UnitOfMeasure UnitOfMeasure { get; set; } = null!;
 
         [Required]
         public decimal Quantity { get; set; }

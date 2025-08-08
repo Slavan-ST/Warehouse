@@ -5,8 +5,8 @@ namespace WarehouseAPI.DTO
     public record ClientDto
     {
         public int Id { get; init; }
-        public string Name { get; init; }
-        public string Address { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public string Address { get; init; } = string.Empty;
         public EntityStatus Status { get; init; }
 
         public ClientDto() { }

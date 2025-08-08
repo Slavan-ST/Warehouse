@@ -20,26 +20,17 @@ import { format, isValid, isAfter } from 'date-fns';
 import type { ReceiptItem } from '../api/warehouseApi';
 import { getReceipts, getResources, getUnits } from '../api/warehouseApi';
 import { Link } from 'react-router-dom';
-
-// Определите типы, если они не импортированы
-interface Resource {
-    id: number;
-    name: string;
-}
-
-interface Unit {
-    id: number;
-    name: string;
-}
+import type { ResourceDto as Resource, UnitOfMeasureDto as Unit} from '../api/warehouseApi';
 
 const IncomesPage = () => {
+    // Основные данные
     const [receipts, setReceipts] = useState<ReceiptItem[]>([]);
     const [resources, setResources] = useState<Resource[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Фильтры
+    // Фильтры с начальными значениями
     const [startDate, setStartDate] = useState<Date | null>(new Date('2000-07-28'));
     const [endDate, setEndDate] = useState<Date | null>(new Date('2025-08-11'));
     const [documentNumberFilter, setDocumentNumberFilter] = useState<string>('');
@@ -47,7 +38,7 @@ const IncomesPage = () => {
     const [unitFilter, setUnitFilter] = useState<number[]>([]);
     const [dateError, setDateError] = useState<string | null>(null);
 
-    // Валидация дат
+    // Валидация дат — проверяем, что startDate не позже endDate
     useEffect(() => {
         if (startDate && endDate && isAfter(startDate, endDate)) {
             setDateError('Дата начала не может быть позже даты окончания');
@@ -56,7 +47,7 @@ const IncomesPage = () => {
         }
     }, [startDate, endDate]);
 
-    // Загрузка поступлений
+    // Загрузка поступлений с фильтрами
     const loadReceipts = useCallback(async () => {
         if (dateError) return;
         try {
@@ -81,16 +72,9 @@ const IncomesPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [
-        startDate,
-        endDate,
-        documentNumberFilter,
-        resourceFilter,
-        unitFilter,
-        dateError,
-    ]);
+    }, [startDate, endDate, documentNumberFilter, resourceFilter, unitFilter, dateError]);
 
-    // Загрузка начальных данных
+    // Загрузка ресурсов и единиц при монтировании и загрузка поступлений
     useEffect(() => {
         const loadData = async () => {
             try {
@@ -117,24 +101,24 @@ const IncomesPage = () => {
         loadData();
     }, [loadReceipts]);
 
-    const handleApplyFilters = () => {
-        loadReceipts();
-    };
-
-    const handleStartDateChange = (newValue: string | null) => {
-        if (!newValue) return;
+    // Обработчики изменений дат с валидацией
+    const handleStartDateChange = (newValue: string) => {
         const date = new Date(newValue);
         if (isValid(date)) {
             setStartDate(date);
         }
     };
 
-    const handleEndDateChange = (newValue: string | null) => {
-        if (!newValue) return;
+    const handleEndDateChange = (newValue: string) => {
         const date = new Date(newValue);
         if (isValid(date)) {
             setEndDate(date);
         }
+    };
+
+    // Обработчик кнопки применить
+    const handleApplyFilters = () => {
+        loadReceipts();
     };
 
     return (
@@ -142,7 +126,12 @@ const IncomesPage = () => {
             <Typography variant="h4" gutterBottom>
                 Поступления
             </Typography>
-            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+            {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    {error}
+                </Alert>
+            )}
 
             <Box sx={{ mb: 3 }}>
                 <Grid container spacing={2}>
@@ -191,7 +180,7 @@ const IncomesPage = () => {
                         <TextField
                             select
                             label="Ресурс"
-                            value={resourceFilter.map(String)}
+                            value={resourceFilter.map(String)} // Значения в строковом формате для select
                             onChange={(e) => {
                                 const value = e.target.value;
                                 const ids = Array.isArray(value)
@@ -226,7 +215,7 @@ const IncomesPage = () => {
                         <TextField
                             select
                             label="Единица измерения"
-                            value={unitFilter.map(String)} // Исправлено: преобразуем числа в строки
+                            value={unitFilter.map(String)} // Значения в строковом формате
                             onChange={(e) => {
                                 const value = e.target.value;
                                 const ids = Array.isArray(value)
@@ -265,12 +254,7 @@ const IncomesPage = () => {
                     >
                         Применить
                     </Button>
-                    <Button
-                        variant="outlined"
-                        component={Link}
-                        to="/add-receipt"
-                        disabled={loading}
-                    >
+                    <Button variant="outlined" component={Link} to="/add-receipt" disabled={loading}>
                         Добавить
                     </Button>
                 </Box>
@@ -292,37 +276,37 @@ const IncomesPage = () => {
                                 <TableCell align="right">Количество</TableCell>
                             </TableRow>
                         </TableHead>
-                            <TableBody>
-                                {receipts.length > 0 ? (
-                                    receipts.map((item) => (
-                                        <TableRow
-                                            key={item.id}
-                                            component={Link}
-                                            to={`/receipts/${item.id}`}
-                                            sx={{
-                                                textDecoration: 'none',
-                                                color: 'inherit',
-                                                '&:hover': {
-                                                    backgroundColor: 'action.hover',
-                                                    cursor: 'pointer',
-                                                },
-                                            }}
-                                        >
-                                            <TableCell>{item.documentNumber}</TableCell>
-                                            <TableCell>{format(new Date(item.date), 'dd.MM.yyyy')}</TableCell>
-                                            <TableCell>{item.resourceName}</TableCell>
-                                            <TableCell>{item.unitName}</TableCell>
-                                            <TableCell align="right">{item.quantity}</TableCell>
-                                        </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={5} align="center">
-                                            Нет данных
-                                        </TableCell>
+                        <TableBody>
+                            {receipts.length > 0 ? (
+                                receipts.map((item) => (
+                                    <TableRow
+                                        key={item.id}
+                                        component={Link}
+                                        to={`/receipts/${item.id}`}
+                                        sx={{
+                                            textDecoration: 'none',
+                                            color: 'inherit',
+                                            '&:hover': {
+                                                backgroundColor: 'action.hover',
+                                                cursor: 'pointer',
+                                            },
+                                        }}
+                                    >
+                                        <TableCell>{item.documentNumber}</TableCell>
+                                        <TableCell>{format(new Date(item.date), 'dd.MM.yyyy')}</TableCell>
+                                        <TableCell>{item.resourceName}</TableCell>
+                                        <TableCell>{item.unitName}</TableCell>
+                                        <TableCell align="right">{item.quantity}</TableCell>
                                     </TableRow>
-                                )}
-                            </TableBody>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={5} align="center">
+                                        Нет данных
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
                     </Table>
                 </TableContainer>
             )}

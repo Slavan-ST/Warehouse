@@ -10,14 +10,14 @@ namespace WarehouseAPI.Models
 
         [Required]
         [StringLength(255)]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         [Required]
-        public string Address { get; set; }
+        public string Address { get; set; } = string.Empty;
 
         [Required]
         public EntityStatus Status { get; set; } = EntityStatus.Active;
 
-        public ICollection<ShipmentDocument> ShipmentDocuments { get; set; }
+        public ICollection<ShipmentDocument> ShipmentDocuments { get; set; } = null!;
     }
 }

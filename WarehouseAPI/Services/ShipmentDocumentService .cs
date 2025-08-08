@@ -305,12 +305,10 @@ namespace WarehouseAPI.Services
             if (document == null)
                 return Result.Failure("Документ не найден");
 
-            // Проверка клиента
             var client = await _context.Clients.FindAsync(clientId);
             if (client?.Status != EntityStatus.Active)
                 return Result.Failure("Клиент не найден или архивирован");
 
-            // Валидация ресурсов и единиц измерения
             foreach (var sr in resources)
             {
                 var resource = await _context.Resources.FindAsync(sr.ResourceId);
@@ -327,16 +325,13 @@ namespace WarehouseAPI.Services
 
             try
             {
-                // Обновляем заголовок
                 document.Number = number;
                 document.ClientId = clientId;
                 document.Date = date;
 
-                // Удаляем старые ресурсы
                 _context.ShipmentResources.RemoveRange(document.ShipmentResources);
                 await _context.SaveChangesAsync();
 
-                // Добавляем новые
                 document.ShipmentResources = resources.Select(r => new ShipmentResource
                 {
                     ShipmentDocumentId = document.Id,

@@ -19,10 +19,8 @@ namespace WarehouseAPI.Services
 
         }
 
-        // WarehouseAPI/Services/ResourceService.cs
         public async Task<Result<Resource>> CreateResourceAsync(CreateResourceRequest request)
         {
-            // Reuse the existing validation logic
             if (string.IsNullOrWhiteSpace(request.Name))
                 return Result.Failure<Resource>("Имя ресурса не может быть пустым");
 
@@ -52,7 +50,7 @@ namespace WarehouseAPI.Services
                 return Result.Failure("Ресурс не найден");
 
             if (resource.Status == EntityStatus.Archived)
-                return Result.Success(); // Идемпотентность
+                return Result.Success();
 
             var isUsed = await IsUsedInRelationships(id,
                 _context.Balances.Where(b => b.ResourceId == id),
@@ -84,7 +82,7 @@ namespace WarehouseAPI.Services
                 return Result.Failure("Ресурс не найден");
 
             if (resource.Status == EntityStatus.Active)
-                return Result.Success(); // Идемпотентность
+                return Result.Success();
 
             resource.Status = EntityStatus.Active;
 

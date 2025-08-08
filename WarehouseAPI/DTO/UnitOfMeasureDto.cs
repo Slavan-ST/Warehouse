@@ -5,7 +5,7 @@ namespace WarehouseAPI.DTO
     public record UnitOfMeasureDto
     {
         public int Id { get; init; }
-        public string Name { get; init; }
+        public string Name { get; init; } = string.Empty;
         public EntityStatus Status { get; init; }
 
         public UnitOfMeasureDto() { }

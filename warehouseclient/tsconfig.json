@@ -7,7 +7,6 @@
   "compilerOptions": {
     "noEmitOnError": false,
     "strict": false,
-    "noEmitOnError": false, 
-    "strict": false
+    "skipLibCheck": true
   }
 }

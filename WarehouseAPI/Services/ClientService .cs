@@ -48,10 +48,10 @@ namespace WarehouseAPI.Services
         {
             var client = await _context.Clients.FindAsync(id);
             if (client == null)
-                return Result.Success(); // Идемпотентность: нет — значит, уже удалён
+                return Result.Success(); 
 
             if (client.Status == EntityStatus.Archived)
-                return Result.Success(); // Идемпотентность
+                return Result.Success(); 
 
             var isUsed = await _context.ShipmentDocuments.AnyAsync(sd => sd.ClientId == id);
             if (isUsed)
@@ -87,7 +87,7 @@ namespace WarehouseAPI.Services
             if (existingInDb == null || existingInDb.Status == EntityStatus.Archived)
                 return Result.Failure("Клиент не найден или архивирован");
 
-            // Проверка на дубликат имени
+
             var exists = await _context.Clients
                 .AnyAsync(c => c.Name == client.Name
                             && c.Id != client.Id
@@ -192,9 +192,9 @@ namespace WarehouseAPI.Services
                 return Result.Failure("Клиент не найден");
 
             if (client.Status == EntityStatus.Active)
-                return Result.Success(); // Идемпотентность
+                return Result.Success();
 
-            // Проверяем, существует ли активный клиент с таким же именем
+
             var existsActiveWithSameName = await _context.Clients
                 .AnyAsync(c => c.Name == client.Name &&
                                c.Id != id &&
