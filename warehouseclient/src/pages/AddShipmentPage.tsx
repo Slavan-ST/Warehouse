@@ -13,6 +13,7 @@ import {
   Paper,
   MenuItem,
   Select,
+  type SelectChangeEvent,
 } from "@mui/material";
 import { format, isValid } from "date-fns";
 import type {
@@ -85,8 +86,12 @@ const AddShipmentPage = () => {
     setError(null);
   };
 
-  const handleClientChange = (e: React.ChangeEvent<{ value: unknown }>) => {
-    setFormData({ ...formData, clientId: e.target.value as number });
+  const handleClientChange = (e: SelectChangeEvent<string>) => {
+    const value = e.target.value;
+    setFormData({
+      ...formData,
+      clientId: value === "" ? null : Number(value),
+    });
     setError(null);
   };
 
@@ -273,7 +278,7 @@ const AddShipmentPage = () => {
           error={!!error && !formData.documentNumber.trim()}
         />
         <Select
-          value={formData.clientId ?? ""}
+          value={formData.clientId === null ? "" : String(formData.clientId)}
           onChange={handleClientChange}
           displayEmpty
           fullWidth

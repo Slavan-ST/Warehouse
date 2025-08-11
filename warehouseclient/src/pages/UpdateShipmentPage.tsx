@@ -10,18 +10,20 @@ import {
     TableCell,
     TableHead,
     TableRow,
+    Autocomplete,
+    CircularProgress,
 } from '@mui/material';
-import { getShipmentById, updateShipment, archiveShipment, type ClientDto } from '../api/warehouseApi';
+import { getShipmentById, updateShipment, archiveShipment, getClients, type ClientDto } from '../api/warehouseApi';
 import { useParams, useNavigate } from 'react-router-dom';
 
 const UpdateShipmentPage = () => {
-
-    const { id } = useParams(); // `id` будет string | undefined
-
+    const { id } = useParams();
     const shipmentId = Number(id);
     const navigate = useNavigate();
 
     const [clients, setClients] = useState<ClientDto[]>([]);
+    const [selectedClient, setSelectedClient] = useState<ClientDto | null>(null);
+    const [clientsLoading, setClientsLoading] = useState(false);
 
     const [formData, setFormData] = useState({
         number: '',
@@ -38,58 +40,68 @@ const UpdateShipmentPage = () => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const fetchShipment = async () => {
+        const fetchClients = async () => {
+            setClientsLoading(true);
             try {
-                // --- ПРОВЕРКА ПАРАМЕТРА URL ---
-                if (!id) {
-                    setError('ID документа не указан в URL');
-                    setLoading(false);
-                    return;
-                }
+                const clientsData = await getClients();
+                setClients(clientsData);
+            } catch (err) {
+                console.error('Ошибка загрузки клиентов:', err);
+                setError('Не удалось загрузить список клиентов');
+            } finally {
+                setClientsLoading(false);
+            }
+        };
 
-                // --- ПРЕОБРАЗОВАНИЕ И ВАЛИДАЦИЯ ID ---
-                const shipmentId = Number(id);
-                if (isNaN(shipmentId) || shipmentId <= 0) {
-                    setError('Некорректный ID документа');
-                    setLoading(false);
-                    return;
-                }
+        fetchClients();
+    }, []);
 
-                // --- ЗАГРУЗКА ДАННЫХ ---
+    useEffect(() => {
+        const fetchShipment = async () => {
+            if (!id) {
+                setError('ID документа не указан в URL');
+                setLoading(false);
+                return;
+            }
+
+            const shipmentId = Number(id);
+            if (isNaN(shipmentId) || shipmentId <= 0) {
+                setError('Некорректный ID документа');
+                setLoading(false);
+                return;
+            }
+
+            try {
                 setLoading(true);
                 setError(null);
 
-                // Вызов API для получения документа
                 const shipment = await getShipmentById(shipmentId);
 
-                // Установка данных формы
                 setFormData({
                     number: shipment.number,
                     date: shipment.date,
-                    clientId: shipment.clientId,
+                    clientId: shipment.client.id,
                     shipmentResources: shipment.shipmentResources.map((sr) => ({
                         resourceId: sr.resourceId,
                         unitOfMeasureId: sr.unitOfMeasureId,
                         quantity: sr.quantity,
                     })),
                 });
+
+                const client = clients.find(c => c.id === shipment.client.id) || null;
+                setSelectedClient(client);
             } catch (err) {
                 console.error('Ошибка получения отгрузки:', err);
-                // Определяем сообщение об ошибке
-                if (err instanceof Error) {
-                    setError(err.message);
-                } else {
-                    setError('Не удалось загрузить данные отгрузки');
-                }
+                setError(err instanceof Error ? err.message : 'Не удалось загрузить данные отгрузки');
             } finally {
-                // Обязательно снимаем индикатор загрузки
                 setLoading(false);
             }
         };
 
-        // Запускаем загрузку
-        fetchShipment();
-    }, [id]);
+        if (clients.length > 0) {
+            fetchShipment();
+        }
+    }, [id, clients]);
 
     const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, number: e.target.value });
@@ -99,8 +111,9 @@ const UpdateShipmentPage = () => {
         setFormData({ ...formData, date: e.target.value });
     };
 
-    const handleClientIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({ ...formData, clientId: Number(e.target.value) });
+    const handleClientChange = (_: any, value: ClientDto | null) => {
+        setSelectedClient(value);
+        setFormData({ ...formData, clientId: value?.id || 0 });
     };
 
     const handleSave = async () => {
@@ -108,27 +121,23 @@ const UpdateShipmentPage = () => {
             setLoading(true);
             setError(null);
 
-            // --- ВАЛИДАЦИЯ ---
             if (!formData.number || !formData.date) {
                 setError('Поля "Номер" и "Дата" не могут быть пустыми');
                 return;
             }
-            if (isNaN(formData.clientId) || formData.clientId <= 0) {
-                setError('Пожалуйста, выберите корректного клиента');
+            if (!selectedClient) {
+                setError('Пожалуйста, выберите клиента');
                 return;
             }
 
-            // --- ПОДГОТОВКА ЗАПРОСА ---
             const request = {
                 number: formData.number,
                 date: formData.date,
-                clientId: formData.clientId,
-                resources: formData.shipmentResources // Ключевое изменение!
+                clientId: selectedClient.id,
+                resources: formData.shipmentResources,
             };
 
-            // --- ОТПРАВКА ЗАПРОСА ---
             await updateShipment(shipmentId, request);
-
             alert('Отгрузка успешно обновлена!');
         } catch (err) {
             console.error('Ошибка обновления отгрузки:', err);
@@ -155,9 +164,8 @@ const UpdateShipmentPage = () => {
         }
     };
 
-    // --- УБРАНО !formData ---
     if (loading) {
-        return <div>Загрузка...</div>;
+        return <div>Загрузка данных...</div>;
     }
 
     return (
@@ -186,19 +194,39 @@ const UpdateShipmentPage = () => {
                 <TextField
                     label="Дата"
                     type="date"
-                    value={formData.date.split('T')[0]} // Очистка времени
+                    value={formData.date.split('T')[0]}
                     onChange={handleDateChange}
                     fullWidth
                     sx={{ mb: 2 }}
+                    InputLabelProps={{ shrink: true }}
                 />
-                <TextField
-                    label="ID Клиента (для теста)"
-                    type="number"
-                    value={formData.clientId || ''}
-                    onChange={handleClientIdChange}
-                    fullWidth
+
+                <Autocomplete
+                    value={selectedClient}
+                    onChange={handleClientChange}
+                    options={clients}
+                    getOptionLabel={(option) => `${option.name}`}
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                    loading={clientsLoading}
+                    renderInput={(params) => (
+                        <TextField
+                            {...params}
+                            label="Выберите клиента"
+                            fullWidth
+                            helperText="Начните вводить имя клиента"
+                            InputProps={{
+                                ...params.InputProps,
+                                endAdornment: (
+                                    <>
+                                        {clientsLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                                        {params.InputProps.endAdornment}
+                                    </>
+                                ),
+                            }}
+                        />
+                    )}
+                    noOptionsText="Клиенты не найдены"
                     sx={{ mb: 2 }}
-                    helperText="Введите ID существующего клиента"
                 />
             </Box>
 
@@ -213,8 +241,8 @@ const UpdateShipmentPage = () => {
                 <TableBody>
                     {formData.shipmentResources.map((resource, index) => (
                         <TableRow key={index}>
-                            <TableCell>{resource.resourceId}</TableCell>
-                            <TableCell>{resource.unitOfMeasureId}</TableCell>
+                            <TableCell>Ресурс #{resource.resourceId}</TableCell>
+                            <TableCell>Ед. изм. {resource.unitOfMeasureId}</TableCell>
                             <TableCell align="right">{resource.quantity}</TableCell>
                         </TableRow>
                     ))}
@@ -228,7 +256,7 @@ const UpdateShipmentPage = () => {
                     onClick={handleSave}
                     disabled={loading}
                 >
-                    {loading ? 'Обновление...' : 'Сохранить'}
+                    {loading ? 'Сохранение...' : 'Сохранить'}
                 </Button>
             </Box>
         </Box>

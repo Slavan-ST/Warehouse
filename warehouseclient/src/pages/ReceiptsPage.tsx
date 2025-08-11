@@ -14,7 +14,6 @@ import {
   TableCell,
   TableBody,
   Paper,
-  
 } from "@mui/material";
 import { isValid, isAfter } from "date-fns";
 import type { ReceiptItem } from "../api/warehouseApi";
@@ -34,7 +33,9 @@ const ReceiptsPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Фильтры
-  const [startDate, setStartDate] = useState<Date | null>(new Date("2000-07-28"));
+  const [startDate, setStartDate] = useState<Date | null>(
+    new Date("2000-07-28")
+  );
   const [endDate, setEndDate] = useState<Date | null>(new Date("2025-08-11"));
   const [documentNumberFilter, setDocumentNumberFilter] = useState<string>("");
   const [resourceFilter, setResourceFilter] = useState<number[]>([]);
@@ -58,11 +59,20 @@ const ReceiptsPage = () => {
       setLoading(true);
       setError(null);
 
-      const documentNumbers = documentNumberFilter ? [documentNumberFilter] : undefined;
-      const resourceIds = resourceFilter.length > 0 ? resourceFilter : undefined;
+      const documentNumbers = documentNumberFilter
+        ? [documentNumberFilter]
+        : undefined;
+      const resourceIds =
+        resourceFilter.length > 0 ? resourceFilter : undefined;
       const unitIds = unitFilter.length > 0 ? unitFilter : undefined;
 
-      const data = await getReceipts(startDate, endDate, documentNumbers, resourceIds, unitIds);
+      const data = await getReceipts(
+        startDate,
+        endDate,
+        documentNumbers,
+        resourceIds,
+        unitIds
+      );
       setReceipts(data);
     } catch (err) {
       console.error("Ошибка загрузки поступлений:", err);
@@ -86,7 +96,10 @@ const ReceiptsPage = () => {
         setLoading(true);
         setError(null);
 
-        const [resourcesRes, unitsRes] = await Promise.all([getResources(), getUnits()]);
+        const [resourcesRes, unitsRes] = await Promise.all([
+          getResources(),
+          getUnits(),
+        ]);
         setResources(resourcesRes);
         setUnits(unitsRes);
 
@@ -132,8 +145,16 @@ const ReceiptsPage = () => {
           mb: 2,
           "& > *": {
             flex: "1 1 calc(50% - 8px)",
-            minWidth: { xs: "100%", sm: "calc(50% - 8px)", md: "calc(25% - 8px)" },
-            maxWidth: { xs: "100%", sm: "calc(50% - 8px)", md: "calc(25% - 8px)" },
+            minWidth: {
+              xs: "100%",
+              sm: "calc(50% - 8px)",
+              md: "calc(25% - 8px)",
+            },
+            maxWidth: {
+              xs: "100%",
+              sm: "calc(50% - 8px)",
+              md: "calc(25% - 8px)",
+            },
           },
         }}
       >
@@ -178,14 +199,18 @@ const ReceiptsPage = () => {
           }}
           SelectProps={{
             multiple: true,
-            renderValue: (selected) =>
-              selected
-                .map((id) => {
-                  const resource = resources.find((r) => r.id === Number(id));
-                  return resource?.name || "";
-                })
-                .filter(Boolean)
-                .join(", "),
+            renderValue: (value: unknown) => {
+              if (Array.isArray(value)) {
+                return (value as string[])
+                  .map((id) => {
+                    const resource = resources.find((r) => r.id === Number(id));
+                    return resource?.name || "";
+                  })
+                  .filter(Boolean)
+                  .join(", ");
+              }
+              return "";
+            },
           }}
           fullWidth
           disabled={loading}
@@ -209,14 +234,18 @@ const ReceiptsPage = () => {
           }}
           SelectProps={{
             multiple: true,
-            renderValue: (selected) =>
-              selected
-                .map((id) => {
-                  const unit = units.find((u) => u.id === Number(id));
-                  return unit?.name || "";
-                })
-                .filter(Boolean)
-                .join(", "),
+            renderValue: (value: unknown) => {
+              if (Array.isArray(value)) {
+                return (value as string[])
+                  .map((id) => {
+                    const unit = units.find((u) => u.id === Number(id));
+                    return unit?.name || "";
+                  })
+                  .filter(Boolean)
+                  .join(", ");
+              }
+              return "";
+            },
           }}
           fullWidth
           disabled={loading}
@@ -296,7 +325,9 @@ const ReceiptsPage = () => {
                       <TableCell component="th" scope="row">
                         {item.documentNumber}
                       </TableCell>
-                      <TableCell align="right">{item.date.split("T")[0]}</TableCell>
+                      <TableCell align="right">
+                        {item.date.split("T")[0]}
+                      </TableCell>
                       <TableCell align="right">{item.resourceName}</TableCell>
                       <TableCell align="right">{item.unitName}</TableCell>
                       <TableCell align="right">{item.quantity}</TableCell>
