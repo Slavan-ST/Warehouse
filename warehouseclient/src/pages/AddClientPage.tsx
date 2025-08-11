@@ -1,19 +1,17 @@
 ﻿import React, { useState } from 'react';
 import { Typography, Box, TextField, Button } from '@mui/material';
-import { createClient } from '../api/warehouseApi'; // Import the API function
+import { createClient } from '../api/warehouseApi';
+
 
 const AddClientPage = () => {
-    // State for form data
     const [formData, setFormData] = useState({
         name: '',
         address: '',
     });
 
-    // State for loading and error messages
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Handle form input changes
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, name: e.target.value });
     };

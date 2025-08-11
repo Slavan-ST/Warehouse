@@ -4,19 +4,17 @@ import { Typography, Box, TextField, Button, Alert } from '@mui/material';
 import { getUnitById, updateUnit, archiveUnit, restoreUnit } from '../api/warehouseApi';
 import { useNavigate } from 'react-router-dom';
 import { useParams } from 'react-router-dom';
+import type {UnitOfMeasureDto} from "../api/warehouseApi";
 
-interface Unit {
-    id: number;
-    name: string;
-    status?: number;
-}
+
+
 
 const UpdateUnitPage = () => {
     const { id } = useParams<{ id: string }>();
     const unitId = Number(id);
     const navigate = useNavigate();
 
-    const [unit, setUnit] = useState<Unit | null>(null);
+    const [unit, setUnit] = useState<UnitOfMeasureDto | null>(null);
     const [formData, setFormData] = useState({ name: '' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);

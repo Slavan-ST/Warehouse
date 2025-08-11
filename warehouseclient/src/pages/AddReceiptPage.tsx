@@ -38,7 +38,6 @@ const AddReceiptPage = () => {
     }[],
   });
 
-  // Загрузка справочников — только активные
   useEffect(() => {
     const loadReferences = async () => {
       try {
@@ -49,7 +48,6 @@ const AddReceiptPage = () => {
         setResources(res);
         setUnits(unt);
 
-        // Добавить пустую строку, если есть данные
         if (res.length > 0 && unt.length > 0) {
           setFormData((prev) => ({
             ...prev,

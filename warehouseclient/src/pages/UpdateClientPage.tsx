@@ -1,14 +1,9 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Typography, Box, TextField, Button } from '@mui/material';
-import { getClientById, updateClient, archiveClient } from '../api/warehouseApi';
+import { getClientById, updateClient, archiveClient, restoreClient  } from '../api/warehouseApi';
 import { useParams } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
-
-interface Client {
-    id: number;
-    name: string;
-    address: string;
-}
+import type {ClientDto} from "../api/warehouseApi";
 
 const UpdateClientPage = () => {
 
@@ -17,7 +12,7 @@ const UpdateClientPage = () => {
     const navigate = useNavigate();
 
     // State for form data
-    const [client, setClient] = useState<Client | null>(null);
+    const [client, setClient] = useState<ClientDto | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         address: '',
@@ -45,7 +40,7 @@ const UpdateClientPage = () => {
         try {
             setLoading(true);
             setError(null);
-            await api.post(`/clients/${clientId}/restore`);
+            await restoreClient(clientId);
             alert('Клиент восстановлен и возвращён в работу');
             setClient({ ...client!, status: 0 }); // Обновляем статус
         } catch (err) {

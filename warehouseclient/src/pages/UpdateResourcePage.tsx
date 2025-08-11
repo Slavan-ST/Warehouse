@@ -4,19 +4,16 @@ import { Typography, Box, TextField, Button, Alert } from '@mui/material';
 import { getResourceById, updateResource, archiveResource, restoreResource } from '../api/warehouseApi';
 import { useNavigate } from 'react-router-dom';
 import { useParams } from 'react-router-dom';
+import type {ResourceDto} from "../api/warehouseApi";
 
-interface Resource {
-    id: number;
-    name: string;
-    status?: number; // 0 = active, 1 = archived
-}
+
 
 const UpdateResourcePage = () => {
     const { id } = useParams<{ id: string }>();
     const resourceId = Number(id);
     const navigate = useNavigate();
 
-    const [resource, setResource] = useState<Resource | null>(null);
+    const [resource, setResource] = useState<ResourceDto | null>(null);
     const [formData, setFormData] = useState({ name: '' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);

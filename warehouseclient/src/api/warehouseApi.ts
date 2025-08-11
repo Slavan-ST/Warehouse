@@ -683,7 +683,6 @@ export const updateShipment = async (
 };
 
 
-// Получить только активные ресурсы
 export const getActiveResources = async (): Promise<ResourceDto[]> => {
     try {
         const response = await api.get<ResourceDto[]>('/resources/active');
@@ -694,7 +693,6 @@ export const getActiveResources = async (): Promise<ResourceDto[]> => {
     }
 };
 
-// Получить только архивированные ресурсы
 export const getArchivedResources = async (): Promise<ResourceDto[]> => {
     try {
         const response = await api.get<ResourceDto[]>('/resources/archive');
@@ -707,7 +705,6 @@ export const getArchivedResources = async (): Promise<ResourceDto[]> => {
 
 
 
-// Получить только активные единицы измерения
 export const getActiveUnits = async (): Promise<UnitOfMeasureDto[]> => {
     try {
         const response = await api.get<UnitOfMeasureDto[]>('/units/active');
@@ -718,7 +715,6 @@ export const getActiveUnits = async (): Promise<UnitOfMeasureDto[]> => {
     }
 };
 
-// Получить только архивированные единицы измерения
 export const getArchivedUnits = async (): Promise<UnitOfMeasureDto[]> => {
     try {
         const response = await api.get<UnitOfMeasureDto[]>('/units/archive');
@@ -730,7 +726,6 @@ export const getArchivedUnits = async (): Promise<UnitOfMeasureDto[]> => {
 };
 
 
-// Получить только активных клиентов
 export const getActiveClients = async (): Promise<ClientDto[]> => {
     try {
         const response = await api.get<ClientDto[]>('/clients/active');
@@ -741,7 +736,6 @@ export const getActiveClients = async (): Promise<ClientDto[]> => {
     }
 };
 
-// Получить только архивированных клиентов
 export const getArchivedClients = async (): Promise<ClientDto[]> => {
     try {
         const response = await api.get<ClientDto[]>('/clients/archive');
@@ -749,5 +743,22 @@ export const getArchivedClients = async (): Promise<ClientDto[]> => {
     } catch (error) {
         console.error('Error fetching archived clients:', error);
         throw new Error('Не удалось загрузить архивированных клиентов');
+    }
+};
+export const restoreClient = async (id: number): Promise<void> => {
+    if (id <= 0) {
+        throw new Error('Некорректный ID клиента');
+    }
+
+    try {
+        await api.post(`/clients/${id}/restore`);
+    } catch (error) {
+        if (error instanceof AxiosError) {
+            if (error.response?.status === 404) {
+                throw new Error('Клиент не найден');
+            }
+        }
+        console.error('Error restoring client:', error);
+        throw new Error('Не удалось восстановить клиента');
     }
 };

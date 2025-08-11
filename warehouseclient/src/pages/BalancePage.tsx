@@ -33,7 +33,6 @@ const BalancePage = () => {
   const [resourceFilter, setResourceFilter] = useState<number[]>([]);
   const [unitFilter, setUnitFilter] = useState<number[]>([]);
 
-  // Загрузка справочников (ресурсы и единицы)
   useEffect(() => {
     const loadReferences = async () => {
       try {
@@ -48,10 +47,8 @@ const BalancePage = () => {
     loadReferences();
   }, []);
 
-  // Загрузка и обогащение балансов
   useEffect(() => {
     const loadBalances = async () => {
-      // Ждём, пока загрузятся справочники
       if (resources.length === 0 || units.length === 0) return;
 
       try {
@@ -63,7 +60,6 @@ const BalancePage = () => {
           unitFilter.length > 0 ? unitFilter : undefined
         );
 
-        // Добавляем имена ресурсов и единиц измерения
         const enrichedBalances: BalanceDto[] = rawBalances.map((item) => ({
           ...item,
           resourceName:

@@ -1,23 +1,19 @@
 ﻿import React, { useState } from 'react';
 import { Typography, Box, TextField, Button } from '@mui/material';
-import { createResource } from '../api/warehouseApi'; // Import the API function
+import { createResource } from '../api/warehouseApi';
 
 const AddResourcePage = () => {
-    // State for form data
     const [formData, setFormData] = useState({
         name: '',
     });
 
-    // State for loading and error messages
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Handle form input changes
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, name: e.target.value });
     };
 
-    // Handle form submission
     const handleSubmit = async () => {
         try {
             setLoading(true);
@@ -47,7 +43,6 @@ const AddResourcePage = () => {
         <Box sx={{ p: 3 }}>
             <Typography variant="h4" gutterBottom>Добавление ресурса</Typography>
             <Box sx={{ mt: 2 }}>
-                {/* Поле для наименования */}
                 <TextField
                     label="Наименование"
                     value={formData.name}
@@ -58,7 +53,6 @@ const AddResourcePage = () => {
                     error={!!error}
                 />
             </Box>
-            {/* Кнопка сохранения */}
             <Button
                 variant="contained"
                 color="success"
