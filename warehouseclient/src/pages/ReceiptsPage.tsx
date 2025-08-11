@@ -25,14 +25,12 @@ import type {
 } from "../api/warehouseApi";
 
 const ReceiptsPage = () => {
-  // Основные данные
   const [receipts, setReceipts] = useState<ReceiptItem[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Фильтры
   const [startDate, setStartDate] = useState<Date | null>(
     new Date("2000-07-28")
   );
@@ -42,7 +40,6 @@ const ReceiptsPage = () => {
   const [unitFilter, setUnitFilter] = useState<number[]>([]);
   const [dateError, setDateError] = useState<string | null>(null);
 
-  // Валидация дат
   useEffect(() => {
     if (startDate && endDate && isAfter(startDate, endDate)) {
       setDateError("Дата начала не может быть позже даты окончания");
@@ -51,7 +48,6 @@ const ReceiptsPage = () => {
     }
   }, [startDate, endDate]);
 
-  // Загрузка данных
   const loadReceipts = useCallback(async () => {
     if (dateError) return;
 
@@ -89,7 +85,7 @@ const ReceiptsPage = () => {
     dateError,
   ]);
 
-  // Загрузка справочников
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -115,7 +111,6 @@ const ReceiptsPage = () => {
     loadData();
   }, [loadReceipts]);
 
-  // Обработчики дат
   const handleStartDateChange = (newValue: string) => {
     const date = new Date(newValue);
     if (isValid(date)) setStartDate(date);
@@ -136,7 +131,6 @@ const ReceiptsPage = () => {
         Поступления
       </Typography>
 
-      {/* Фильтры */}
       <Box
         sx={{
           display: "flex",
@@ -278,21 +272,20 @@ const ReceiptsPage = () => {
         </Button>
       </Box>
 
-      {/* Ошибка */}
+
       {error && (
         <Alert severity="error" sx={{ mt: 2 }}>
           {error}
         </Alert>
       )}
 
-      {/* Загрузка */}
+
       {loading && (
         <Box sx={{ mt: 2, display: "flex", justifyContent: "center" }}>
           <CircularProgress />
         </Box>
       )}
 
-      {/* Таблица */}
       {!loading && !error && (
         <Box sx={{ mt: 2 }}>
           <Typography variant="h6" gutterBottom>

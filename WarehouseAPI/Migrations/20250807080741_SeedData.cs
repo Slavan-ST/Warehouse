@@ -158,7 +158,6 @@ namespace WarehouseAPI.Migrations
             string whereColumn = columns[0];
             object whereValue = values[0];
 
-            // Преобразуем значения в строку для SQL
             string ValuesToSql()
             {
                 string result = "";

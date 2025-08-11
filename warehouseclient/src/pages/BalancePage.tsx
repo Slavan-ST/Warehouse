@@ -1,5 +1,4 @@
-﻿// src/pages/BalancePage.tsx
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import {
   Typography,
   Table,

@@ -34,7 +34,6 @@ import type {
 } from "../api/warehouseApi";
 
 const ShipmentsPage = () => {
-  // Основные данные
   const [shipments, setShipments] = useState<ShipmentItem[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -42,7 +41,7 @@ const ShipmentsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Фильтры
+  
   const [startDate, setStartDate] = useState<Date | null>(
     new Date("2000-07-28")
   );
@@ -53,7 +52,7 @@ const ShipmentsPage = () => {
   const [unitFilter, setUnitFilter] = useState<number[]>([]);
   const [dateError, setDateError] = useState<string | null>(null);
 
-  // Валидация дат
+  
   useEffect(() => {
     if (startDate && endDate && isAfter(startDate, endDate)) {
       setDateError("Дата начала не может быть позже даты окончания");
@@ -62,8 +61,7 @@ const ShipmentsPage = () => {
     }
   }, [startDate, endDate]);
 
-  // Загрузка данных
-  // Загрузка данных
+  
   const loadShipments = useCallback(async () => {
     if (dateError) return;
 
@@ -138,7 +136,7 @@ const ShipmentsPage = () => {
     loadData();
   }, []);
 
-  // Обработчики дат
+  
   const handleStartDateChange = (newValue: string) => {
     const date = new Date(newValue);
     if (isValid(date)) setStartDate(date);
@@ -153,7 +151,7 @@ const ShipmentsPage = () => {
     loadShipments();
   };
 
-  // Форматирование статуса
+  
   const getStatusLabel = (status: ShipmentItem["status"]) => {
     switch (status) {
       case "draft":
@@ -186,7 +184,6 @@ const ShipmentsPage = () => {
         Отгрузки
       </Typography>
 
-      {/* Фильтры */}
       <Box
         sx={{
           display: "flex",
@@ -315,7 +312,7 @@ const ShipmentsPage = () => {
         </TextField>
       </Box>
 
-      {/* Кнопки */}
+
       <Box sx={{ display: "flex", gap: 2, mt: 2, flexWrap: "wrap" }}>
         <Button
           variant="contained"
@@ -335,14 +332,12 @@ const ShipmentsPage = () => {
         </Button>
       </Box>
 
-      {/* Ошибка */}
       {error && (
         <Alert severity="error" sx={{ mt: 2 }}>
           {error}
         </Alert>
       )}
 
-      {/* Загрузка */}
       {loading && (
         <Box sx={{ mt: 2, display: "flex", justifyContent: "center" }}>
           <CircularProgress />

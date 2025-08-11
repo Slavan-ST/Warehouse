@@ -78,7 +78,7 @@ const UpdateReceiptPage = () => {
       await updateReceipt(receiptId, {
         number: formData.number,
         date: formData.date,
-        resources: formData.receiptResources, // ← ключевое изменение
+        resources: formData.receiptResources,
       });
 
       alert("Поступление успешно обновлено!");

@@ -52,6 +52,7 @@ function App() {
                     </Route>
 
                     {/* Документы (поступления и отгрузки) */}
+                    
                     <Route path="add-receipt" element={<AddReceiptPage />} />
                     <Route path="add-shipment" element={<AddShipmentPage />} />
 

@@ -28,7 +28,6 @@ import {
 } from "../api/warehouseApi";
 import { createShipment, signShipment } from "../api/warehouseApi";
 
-// Типы для запроса (должны быть определены в warehouseApi, но на всякий случай уточним)
 interface CreateShipmentDocumentRequest {
   number: string;
   date: string;
@@ -47,7 +46,6 @@ const AddShipmentPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Состояние формы
   const [formData, setFormData] = useState({
     documentNumber: "",
     clientId: null as number | null,
@@ -59,7 +57,6 @@ const AddShipmentPage = () => {
     }[],
   });
 
-  // Загрузка справочников — только активные
   useEffect(() => {
     const loadReferences = async () => {
       try {

@@ -1,5 +1,4 @@
-﻿// Models/ReceiptDocument.cs
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using WarehouseAPI.Models.Enums;
 
 namespace WarehouseAPI.Models

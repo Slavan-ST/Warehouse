@@ -42,14 +42,13 @@ namespace WarehouseAPI.Controllers
 
                 var balances = result.Value;
 
-                // Фильтрация по ресурсам
+
                 if (resourceIds != null && resourceIds.Length > 0)
                 {
                     _logger.LogInformation("Фильтрация остатков по ResourceIds: [{ResourceIds}]", string.Join(",", resourceIds));
                     balances = balances.Where(b => resourceIds.Contains(b.ResourceId)).ToList();
                 }
 
-                // Фильтрация по единицам измерения
                 if (unitIds != null && unitIds.Length > 0)
                 {
                     _logger.LogInformation("Фильтрация остатков по UnitIds: [{UnitIds}]", string.Join(",", unitIds));

@@ -286,11 +286,11 @@ namespace WarehouseAPI.Services
         }
 
         public async Task<Result> UpdateShipmentDocumentAsync(
-    int id,
-    string number,
-    int clientId,
-    DateTime date,
-    List<CreateShipmentResourceRequest> resources)
+            int id,
+            string number,
+            int clientId,
+            DateTime date,
+            List<CreateShipmentResourceRequest> resources)
         {
             if (string.IsNullOrWhiteSpace(number))
                 return Result.Failure("Номер документа не может быть пустым");

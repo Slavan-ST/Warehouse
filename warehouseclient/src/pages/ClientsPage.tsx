@@ -1,5 +1,4 @@
-﻿
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import {
     Typography,
     Table,
@@ -57,7 +56,6 @@ const ClientsPage = () => {
             <Typography variant="h4" gutterBottom>Клиенты</Typography>
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-            {/* Используем Box вместо Grid */}
             <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
                 <Button
                     variant="outlined"

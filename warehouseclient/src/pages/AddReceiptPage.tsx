@@ -27,7 +27,6 @@ const AddReceiptPage = () => {
   const [resources, setResources] = useState<ResourceDto[]>([]);
   const [units, setUnits] = useState<UnitOfMeasureDto[]>([]);
 
-  // Состояние для формы
   const [formData, setFormData] = useState({
     documentNumber: "",
     date: new Date(),

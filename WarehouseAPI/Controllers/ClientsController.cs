@@ -65,7 +65,6 @@ namespace WarehouseAPI.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateClient([FromBody] CreateClientRequest request)
         {
-            // Проверяем модель
             if (!ModelState.IsValid)
                 return BadRequest(new { message = "Некорректные данные", errors = ModelState });
 
