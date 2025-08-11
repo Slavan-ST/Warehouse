@@ -161,6 +161,7 @@ namespace WarehouseAPI.Services
             try
             {
                 return await _context.Resources
+                    .Where(r => r.Id == id)
                     .Select(r => new ResourceDto(
                         r.Id,
                         r.Name,

@@ -12,7 +12,6 @@ import {
     Button,
     CircularProgress,
     Alert,
-    Grid,
 } from '@mui/material';
 import { getActiveUnits, getArchivedUnits } from '../api/warehouseApi';
 import type { UnitOfMeasureDto } from '../api/warehouseApi';
@@ -38,57 +37,42 @@ const UnitsPage = () => {
         load();
     }, [view]);
 
-    const filteredUnits = units.filter(unit => {
-        const status = unit.status ?? 0;
-        return view === 'active' ? status === 0 : status === 1;
-    });
 
-    const handleArchiveClick = () => {
-        setView('archive');
-    };
-
-    const handleActiveClick = () => {
-        setView('active');
-    };
+    const handleArchiveClick = () => setView('archive');
+    const handleActiveClick = () => setView('active');
 
     return (
         <Box sx={{ p: 3 }}>
             <Typography variant="h4" gutterBottom>Единицы измерения</Typography>
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item>
-                    <Button
-                        variant="outlined"
-                        color="success"
-                        disabled={loading}
-                        component={Link}
-                        to="/units/add"
-                    >
-                        Добавить
-                    </Button>
-                </Grid>
-                <Grid item>
-                    <Button
-                        variant={view === 'active' ? 'outlined' : 'contained'}
-                        color="warning"
-                        onClick={handleArchiveClick}
-                        disabled={loading}
-                    >
-                        К архиву
-                    </Button>
-                </Grid>
-                <Grid item>
-                    <Button
-                        variant={view === 'active' ? 'contained' : 'outlined'}
-                        color="primary"
-                        onClick={handleActiveClick}
-                        disabled={loading}
-                    >
-                        Активные
-                    </Button>
-                </Grid>
-            </Grid>
+            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <Button
+                    variant="outlined"
+                    color="success"
+                    disabled={loading}
+                    component={Link}
+                    to="/units/add"
+                >
+                    Добавить
+                </Button>
+                <Button
+                    variant={view === 'active' ? 'outlined' : 'contained'}
+                    color="warning"
+                    onClick={handleArchiveClick}
+                    disabled={loading}
+                >
+                    К архиву
+                </Button>
+                <Button
+                    variant={view === 'active' ? 'contained' : 'outlined'}
+                    color="primary"
+                    onClick={handleActiveClick}
+                    disabled={loading}
+                >
+                    Активные
+                </Button>
+            </Box>
 
             {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -103,8 +87,8 @@ const UnitsPage = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {filteredUnits.length > 0 ? (
-                                filteredUnits.map((unit) => (
+                            {units.length > 0 ? (
+                                units.map((unit) => (
                                     <TableRow
                                         key={unit.id}
                                         component={Link}
@@ -123,7 +107,7 @@ const UnitsPage = () => {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell align="center">
+                                    <TableCell align="center" colSpan={1}>
                                         {view === 'active'
                                             ? 'Нет активных единиц измерения'
                                             : 'Нет единиц измерения в архиве'}

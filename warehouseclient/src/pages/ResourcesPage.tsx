@@ -43,11 +43,6 @@ const ResourcesPage = () => {
     load();
   }, [view]);
 
-  const filteredResources = resources.filter((resource) => {
-    const status = resource.status ?? 0;
-    return view === "active" ? status === 0 : status === 1;
-  });
-
   const handleArchiveClick = () => {
     setView("archive");
   };
@@ -109,8 +104,8 @@ const ResourcesPage = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredResources.length > 0 ? (
-                filteredResources.map((resource) => (
+              {resources.length > 0 ? (
+                resources.map((resource) => (
                   <TableRow
                     key={resource.id}
                     component={Link}

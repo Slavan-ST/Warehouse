@@ -160,6 +160,7 @@ namespace WarehouseAPI.Services
             try
             {
                 return await _context.Clients
+                    .Where(c => c.Id == id)
                     .Select(c => new ClientDto(
                         c.Id,
                         c.Name,
